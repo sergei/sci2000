@@ -11,12 +11,13 @@ include_directories(inc)
 
 set (INCS
         inc/mcp4728.h
+        inc/mhusim.h
         )
 
 set (SRCS
         src/mcp4728.c
         src/main.c
-        )
+        src/mhusim.c)
 
 set(LIBS
         ${FT4222_LIBRARY}

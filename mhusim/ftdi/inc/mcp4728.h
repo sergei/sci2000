@@ -17,5 +17,7 @@ void closeI2CMaster(FT_HANDLE ftHandle);
 // Write DAC values
 int writeDac(FT_HANDLE ftHandle, uint16 dacA,  uint16 dacB,  uint16 dacC,  uint16 dacD );
 
+#define MAX_DAC_VALUE  ((1U << 12U) - 1)
+
 
 #endif //FTDI_MCP4728_H

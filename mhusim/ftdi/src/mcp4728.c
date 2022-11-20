@@ -156,8 +156,8 @@ int writeDac(FT_HANDLE ftHandle, uint16 dacA,  uint16 dacB,  uint16 dacC,  uint1
     commandBuffer[idx++] = 0x00U | (0x00FFU & (dac >> 8 ) );
     commandBuffer[idx++] = (uint8)(0x00FFU & dac);
 
-    printf("Writing %d bytes...\n", idx);
-    hexdump(commandBuffer, CHANNELS_NUM * BYTES_PER_CHANNEL);
+//    printf("Writing %d bytes...\n", idx);
+//    hexdump(commandBuffer, CHANNELS_NUM * BYTES_PER_CHANNEL);
 
 
     bytesToWrite = idx;
@@ -181,15 +181,15 @@ int writeDac(FT_HANDLE ftHandle, uint16 dacA,  uint16 dacB,  uint16 dacC,  uint1
         goto exit;
     }
 
-    uint8 controllerStatus=0;
-    ft4222Status = FT4222_I2CMaster_GetStatus(ftHandle, &controllerStatus);
-    if (FT4222_OK != ft4222Status)
-    {
-        printf("FT4222_I2CMaster_GetStatus failed (error %d)\n",
-               (int)ft4222Status);
-        goto exit;
-    }
-    printf("controllerStatus %02X \n", controllerStatus);
+//    uint8 controllerStatus=0;
+//    ft4222Status = FT4222_I2CMaster_GetStatus(ftHandle, &controllerStatus);
+//    if (FT4222_OK != ft4222Status)
+//    {
+//        printf("FT4222_I2CMaster_GetStatus failed (error %d)\n",
+//               (int)ft4222Status);
+//        goto exit;
+//    }
+//    printf("controllerStatus %02X \n", controllerStatus);
 
 
     success = 1;
