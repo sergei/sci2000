@@ -10,11 +10,11 @@ find_package(FT4222 REQUIRED)
 include_directories(inc)
 
 set (INCS
-        inc/i2cm.h
+        inc/mcp4728.h
         )
 
 set (SRCS
-        src/i2cm.c
+        src/mcp4728.c
         src/main.c
         )
 
