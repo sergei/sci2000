@@ -127,7 +127,7 @@ void closeI2CMaster(FT_HANDLE ftHandle)
 #pragma ide diagnostic ignored "hicpp-signed-bitwise"
 int writeDac(FT_HANDLE ftHandle, uint16 dacA,  uint16 dacB,  uint16 dacC,  uint16 dacD )
 {
-    int                  success = 0;
+    int                  retCode = 0;
     FT4222_STATUS        ft4222Status;
     const uint16         slaveAddr = 0x64;
     uint16               bytesToWrite;
@@ -139,6 +139,7 @@ int writeDac(FT_HANDLE ftHandle, uint16 dacA,  uint16 dacB,  uint16 dacC,  uint1
     {
         printf("FT4222_I2CMaster_Reset failed (error %d)!\n",
                ft4222Status);
+        retCode = 1;
         goto exit;
     }
 
@@ -155,10 +156,6 @@ int writeDac(FT_HANDLE ftHandle, uint16 dacA,  uint16 dacB,  uint16 dacC,  uint1
     dac = dacD;
     commandBuffer[idx++] = 0x00U | (0x00FFU & (dac >> 8 ) );
     commandBuffer[idx++] = (uint8)(0x00FFU & dac);
-
-//    printf("Writing %d bytes...\n", idx);
-//    hexdump(commandBuffer, CHANNELS_NUM * BYTES_PER_CHANNEL);
-
 
     bytesToWrite = idx;
     ft4222Status = FT4222_I2CMaster_Write(ftHandle,
@@ -178,26 +175,15 @@ int writeDac(FT_HANDLE ftHandle, uint16 dacA,  uint16 dacB,  uint16 dacC,  uint1
         printf("FT4222_I2CMaster_Write wrote %u of %u bytes.\n",
                bytesWritten,
                bytesToWrite);
+        retCode = 2;
         goto exit;
     }
 
-//    uint8 controllerStatus=0;
-//    ft4222Status = FT4222_I2CMaster_GetStatus(ftHandle, &controllerStatus);
-//    if (FT4222_OK != ft4222Status)
-//    {
-//        printf("FT4222_I2CMaster_GetStatus failed (error %d)\n",
-//               (int)ft4222Status);
-//        goto exit;
-//    }
-//    printf("controllerStatus %02X \n", controllerStatus);
-
-
-    success = 1;
-
 exit:
 
-    return success;
+    return retCode;
 }
+
 #pragma clang diagnostic pop
 
 int findFt422(DWORD *locId){

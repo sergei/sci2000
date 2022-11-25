@@ -9,7 +9,7 @@
 
 static volatile int keepRunning = 1;
 
-void intHandler(int dummy) {
+void intHandler() {
     keepRunning = 0;
 }
 
@@ -19,6 +19,9 @@ static uint16 sin2dac(double v){
 
 
 int mhusim(FT_HANDLE ftHandle, double awsKts, double awaDeg){
+
+    printf("awaDeg=%.0f awsKts=%.1f\n", awaDeg, awsKts);
+    printf("Press Ctrl-C to exit\n");
 
     signal(SIGINT, intHandler);
 
@@ -47,7 +50,10 @@ int mhusim(FT_HANDLE ftHandle, double awsKts, double awaDeg){
         int16 dacD = taws < twsPulseLenSec ? MAX_DAC_VALUE: 0;
 
 //        printf("t=%.3lf awaDeg=%.2f r=%.2f g=%.2f b=%.2f dacD=%03X\n", t, awaDeg, a, b, c, dacD);
-        writeDac(ftHandle, sin2dac(a),  sin2dac(b),  sin2dac(c),  dacD );
+        int rc = writeDac(ftHandle, sin2dac(a),  sin2dac(b),  sin2dac(c),  dacD );
+        if ( rc )
+            return rc;
+
         nanosleep(&ts, &ts);
         t += dtSec;
     }
