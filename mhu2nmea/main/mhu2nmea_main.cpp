@@ -108,7 +108,6 @@ extern "C" void app_main(void)
     int16_t count = 0;
     pcnt_evt_t evt;
     portBASE_TYPE res;
-    int16_t adc_data[4];
 
     while (1) {
         /* Wait for the event information passed from PCNT's interrupt handler.
@@ -129,8 +128,12 @@ extern "C" void app_main(void)
             ESP_LOGI(TAG, "Current counter value :%d", count);
             N2Khandler.Update(false, 0, 0);
         }
-        ADChandler.Poll(adc_data, 3);
-        ESP_LOGI(TAG,"ADC ch0=%02x ch1=%02x ch2=%02x", adc_data[0], adc_data[1], adc_data[2]);
+        float awa;
+        bool validAwa = ADChandler.pollAwa(awa);
+        if ( validAwa )
+            ESP_LOGI(TAG,"AWA=%.1f", awa * 180 / PI);
+        else
+            ESP_LOGE(TAG, "Failed to read AWA");
     }
 
 }
