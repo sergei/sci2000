@@ -5,8 +5,10 @@
 #include "esp_system.h"
 #include "esp_log.h"
 #include "driver/pcnt.h"
+#include "N2KHandler.h"
+#include "ADCHandler.h"
 
-static const char *TAG = "mhu2nmea";
+static const char *TAG = "mhu2nmea_main";
 
 #define PCNT_H_LIM_VAL      4   // Interrupt on every four pulses
 #define PCNT_L_LIM_VAL     (-15)
@@ -22,6 +24,9 @@ typedef struct {
     int64_t elapsed_us; // Time since last event
 } pcnt_evt_t;
 
+N2KHandler N2Khandler;
+ADCHandler ADChandler;
+
 /* Decode what PCNT's unit originated an interrupt
  * and pass this information together with the event type
  * the main program using a queue.
@@ -31,7 +36,7 @@ static void IRAM_ATTR pcnt_example_intr_handler(void *arg)
     static int64_t last_timer_value = -1;
     int64_t current_timer_value = esp_timer_get_time();
 
-    int pcnt_unit = (int)arg;
+    pcnt_unit_t pcnt_unit = (pcnt_unit_t)(int)arg;
     pcnt_evt_t evt;
     evt.unit = pcnt_unit;
     evt.elapsed_us = current_timer_value - last_timer_value;
@@ -47,22 +52,28 @@ static void IRAM_ATTR pcnt_example_intr_handler(void *arg)
  *  - set up the input filter
  *  - set up the counter events to watch
  */
-static void pcnt_example_init(int unit)
+static void pcnt_example_init(pcnt_unit_t unit)
 {
     /* Prepare configuration for the PCNT unit */
     pcnt_config_t pcnt_config = {
             // Set PCNT input signal and control GPIOs
             .pulse_gpio_num = WIND_SPEED_PULSE_IO,
             .ctrl_gpio_num = PCNT_PIN_NOT_USED,  // Don't use control input
-            .channel = PCNT_CHANNEL_0,
-            .unit = unit,
+
+            .lctrl_mode = PCNT_CHANNEL_LEVEL_ACTION_KEEP, // Should not matter
+            .hctrl_mode = PCNT_CHANNEL_LEVEL_ACTION_KEEP, // Should not matter
+
             // What to do on the positive / negative edge of pulse input?
             .pos_mode = PCNT_COUNT_INC,   // Count up on the positive edge
             .neg_mode = PCNT_COUNT_DIS,   // Keep the counter value on the negative edge
             // Set the maximum and minimum limit values to watch
             .counter_h_lim = PCNT_H_LIM_VAL,
             .counter_l_lim = PCNT_L_LIM_VAL,
+
+            .unit = unit,
+            .channel = PCNT_CHANNEL_0,
     };
+
     /* Initialize PCNT unit */
     pcnt_unit_config(&pcnt_config);
 
@@ -83,10 +94,12 @@ static void pcnt_example_init(int unit)
     pcnt_counter_resume(unit);
 }
 
-
-void app_main(void)
+extern "C" void app_main(void)
 {
-    int pcnt_unit = PCNT_UNIT_0;
+    N2Khandler.Init();
+    ADChandler.Init();
+
+    pcnt_unit_t pcnt_unit = PCNT_UNIT_0;
 
     /* Initialize PCNT event queue and PCNT functions */
     pcnt_evt_queue = xQueueCreate(10, sizeof(pcnt_evt_t));
@@ -95,6 +108,8 @@ void app_main(void)
     int16_t count = 0;
     pcnt_evt_t evt;
     portBASE_TYPE res;
+    int16_t adc_data[4];
+
     while (1) {
         /* Wait for the event information passed from PCNT's interrupt handler.
          * Once received, decode the event type and print it on the serial monitor.
@@ -107,11 +122,15 @@ void app_main(void)
                 // Convert to knots
                 float freqHz = 1.f / (float)evt.elapsed_us * PCNT_H_LIM_VAL * 1000000.f;
                 ESP_LOGI(TAG, "H_LIM EVT  elapsed time = %lld us f = %.3f Hz" , evt.elapsed_us, freqHz);
+                N2Khandler.Update(false, freqHz, 20);
             }
         } else {
             pcnt_get_counter_value(pcnt_unit, &count);
             ESP_LOGI(TAG, "Current counter value :%d", count);
+            N2Khandler.Update(false, 0, 0);
         }
+        ADChandler.Poll(adc_data, 3);
+        ESP_LOGI(TAG,"ADC ch0=%02x ch1=%02x ch2=%02x", adc_data[0], adc_data[1], adc_data[2]);
     }
 
 }

@@ -1,0 +1,31 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="PyChainedComparisonsInspection" enabled="true" level="WEAK WARNING" enabled_by_default="true">
+      <option name="ignoreConstantInTheMiddle" value="true" />
+    </inspection_tool>
+    <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredPackages">
+        <value>
+          <list size="15">
+            <item index="0" class="java.lang.String" itemvalue="gdbgui" />
+            <item index="1" class="java.lang.String" itemvalue="kconfiglib" />
+            <item index="2" class="java.lang.String" itemvalue="bitstring" />
+            <item index="3" class="java.lang.String" itemvalue="ecdsa" />
+            <item index="4" class="java.lang.String" itemvalue="construct" />
+            <item index="5" class="java.lang.String" itemvalue="click" />
+            <item index="6" class="java.lang.String" itemvalue="python-socketio" />
+            <item index="7" class="java.lang.String" itemvalue="jinja2" />
+            <item index="8" class="java.lang.String" itemvalue="pyelftools" />
+            <item index="9" class="java.lang.String" itemvalue="idf-component-manager" />
+            <item index="10" class="java.lang.String" itemvalue="future" />
+            <item index="11" class="java.lang.String" itemvalue="pygdbmi" />
+            <item index="12" class="java.lang.String" itemvalue="reedsolo" />
+            <item index="13" class="java.lang.String" itemvalue="pyparsing" />
+            <item index="14" class="java.lang.String" itemvalue="itsdangerous" />
+          </list>
+        </value>
+      </option>
+    </inspection_tool>
+  </profile>
+</component>
