@@ -1,11 +1,17 @@
+#include <esp_log.h>
 #include "N2KHandler.h"
+
+#define ESP32_CAN_TX_PIN GPIO_NUM_32
+#define ESP32_CAN_RX_PIN GPIO_NUM_34
+
 #include "NMEA2000_esp32.h"
 #include "N2kMessages.h"
 
-tNMEA2000_esp32 NMEA2000;
+tNMEA2000_esp32 NMEA2000(ESP32_CAN_TX_PIN, ESP32_CAN_RX_PIN);
 
 const unsigned long TransmitMessages[] PROGMEM={130306,  // Wind Speed
                                                 0};
+static const char *TAG = "mhu2nmea_N2KHandler";
 
 void N2KHandler::Init() {
 
@@ -78,10 +84,15 @@ void N2KHandler::StartTask() {
 
 }
 
+int nmea2000_esp32_getTxFramesCnt();  // Added to components/NMEA2000_esp32/NMEA2000_esp32.cpp:235 to count sent frame from ISR
+
 [[noreturn]] void N2KHandler::N2KTask() {
+    ESP_LOGI(TAG, "Starting N2K task ");
+
     Init();
     for( ;; ) {
-        if ( isAwsValid && isAwaValid ) {
+//        if ( isAwsValid && isAwaValid )
+        {
             tN2kMsg N2kMsg;
             double localAwaRad;
             double localAwsMs;
@@ -94,10 +105,13 @@ void N2KHandler::StartTask() {
 
 
             SetN2kWindSpeed(N2kMsg, this->uc_WindSeqId++, localAwsMs, localAwaRad, N2kWind_Apparent );
-            NMEA2000.SendMsg(N2kMsg);
+            ESP_LOGI(TAG, "Start sending ");
+            bool sentOk = NMEA2000.SendMsg(N2kMsg);
+            ESP_LOGI(TAG, "SendMsg %s sent frame cnt %d", sentOk ? "OK" : "Failed", nmea2000_esp32_getTxFramesCnt());
         }
+
         NMEA2000.ParseMessages();
-        vTaskDelay(500 / portTICK_PERIOD_MS); // 500 mS
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
 
     }
 }

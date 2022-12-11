@@ -13,6 +13,14 @@ int ESP32N2kStream::peek() {
 }
 
 size_t ESP32N2kStream::write(const uint8_t *data, size_t size) {
-    ESP_LOG_BUFFER_CHAR(TAG, data, size);
+    for( int i =0 ; i < size; i++){
+        if(data[i] == '\n' || len == (sizeof(buff) -1)) {
+            buff[len] = '\0';
+            ESP_LOGI(TAG, "%s", buff);
+            len = 0;
+        }else{
+            buff[len++] = (char)data[i];
+        }
+    }
     return size;
 }

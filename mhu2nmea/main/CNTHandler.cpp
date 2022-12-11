@@ -91,11 +91,11 @@ void CNTHandler::Start() {
 float CNTHandler::getPulseRateHz(const Event &evt) {
     int16_t count = 0;
     pcnt_get_counter_value(unit, &count);
-    ESP_LOGI(TAG, "Event PCNT unit[%d]; cnt: %d", evt.u.ctr.unit, count);
+    ESP_LOGV(TAG, "Event PCNT unit[%d]; cnt: %d", evt.u.ctr.unit, count);
     if (evt.u.ctr.status & PCNT_EVT_H_LIM) {
         // Convert to knots
         float freqHz = 1.f / (float)evt.u.ctr.elapsed_us * PCNT_H_LIM_VAL * 1000000.f;
-        ESP_LOGI(TAG, "H_LIM EVT  elapsed time = %lld us f = %.3f Hz" , evt.u.ctr.elapsed_us, freqHz);
+        ESP_LOGV(TAG, "H_LIM EVT  elapsed time = %lld us f = %.3f Hz" , evt.u.ctr.elapsed_us, freqHz);
         return freqHz;
     }
 

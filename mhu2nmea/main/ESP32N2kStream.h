@@ -10,7 +10,9 @@ class ESP32N2kStream : public N2kStream{
 
     // Write data to stream.
     size_t write(const uint8_t* data, size_t size) override;
-
+private:
+    char buff[2048];
+    int  len = 0;
 };
 
 

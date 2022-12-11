@@ -2,7 +2,7 @@
 #include "esp_log.h"
 #include "AWAHandler.h"
 
-static const char *TAG = "mhu2nmea_ADCHandler";
+static const char *TAG = "mhu2nmea_AWAHandler";
 
 void AWAHandler::Init() {
 
@@ -45,7 +45,7 @@ bool AWAHandler::Poll(int16_t *data, int chanNum) {
             if ( ! isBusy ){
                 int16_t value;
                 ESP_ERROR_CHECK(ads111x_get_value(&this->dev, &value));
-                ESP_LOGI(TAG, "Read c[%d]=%04x after %d ms", ch_idx, value, ms_count);
+                ESP_LOGV(TAG, "Read c[%d]=%04x after %d ms", ch_idx, value, ms_count);
                 data[ch_idx] = value;
                 break;
             }
@@ -108,7 +108,7 @@ bool AWAHandler::pollAwa(float &awaRad) {
         };
         xQueueSend(eventQueue, &evt, 0);
 
-        vTaskDelay(500 / portTICK_PERIOD_MS); // 500 mS
+        vTaskDelay(1000 / portTICK_PERIOD_MS); // 500 mS
     }
 }
 

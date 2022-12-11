@@ -27,7 +27,7 @@ extern "C" void app_main(void)
     portBASE_TYPE res;
 
     CNThandler.Start();
-    AWAhandler.StartTask();
+//    AWAhandler.StartTask();
     N2Khandler.StartTask();
 
     while (1) {
