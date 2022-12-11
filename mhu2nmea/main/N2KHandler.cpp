@@ -41,11 +41,63 @@ void N2KHandler::Init() {
     NMEA2000.ExtendTransmitMessages(TransmitMessages);
 }
 
-void N2KHandler::Update(bool isValid, double awsKts, double awaDeg) {
-    if ( isValid ) {
-        tN2kMsg N2kMsg;
-        SetN2kWindSpeed(N2kMsg, this->uc_WindSeqId++, KnotsToms(awsKts), DegToRad(awaDeg), N2kWind_Apparent );
-        NMEA2000.SendMsg(N2kMsg);
+
+void N2KHandler::SetAwa(bool isValid, float value) {
+    xSemaphoreTake(awaMutex, portMAX_DELAY);
+    isAwaValid = isValid;
+    awaRad = value;
+    awaUpdateTime = esp_timer_get_time();
+    xSemaphoreGive(awaMutex);
+}
+
+void N2KHandler::SetAws(bool isValid, float value) {
+    xSemaphoreTake(awsMutex, portMAX_DELAY);
+    isAwsValid = isValid;
+    awsKts = value;
+    awsUpdateTime = esp_timer_get_time();
+    xSemaphoreGive(awsMutex);
+}
+
+N2KHandler::N2KHandler() {
+    awaMutex = xSemaphoreCreateMutex();
+    awsMutex = xSemaphoreCreateMutex();
+}
+
+static void n2k_task( void *me ) {
+    ((N2KHandler *)me)->N2KTask();
+}
+
+void N2KHandler::StartTask() {
+    xTaskCreate(
+            n2k_task,         /* Function that implements the task. */
+            "N2KTask",            /* Text name for the task. */
+            16 * 1024,        /* Stack size in words, not bytes. */
+            ( void * ) this,  /* Parameter passed into the task. */
+            tskIDLE_PRIORITY + 1, /* Priority at which the task is created. */
+            nullptr );        /* Used to pass out the created task's handle. */
+
+}
+
+[[noreturn]] void N2KHandler::N2KTask() {
+    Init();
+    for( ;; ) {
+        if ( isAwsValid && isAwaValid ) {
+            tN2kMsg N2kMsg;
+            double localAwaRad;
+            double localAwsMs;
+            xSemaphoreTake(awsMutex, portMAX_DELAY);
+            localAwsMs = KnotsToms(awsKts);
+            xSemaphoreGive(awsMutex);
+            xSemaphoreTake(awaMutex, portMAX_DELAY);
+            localAwaRad = awaRad;
+            xSemaphoreGive(awaMutex);
+
+
+            SetN2kWindSpeed(N2kMsg, this->uc_WindSeqId++, localAwsMs, localAwaRad, N2kWind_Apparent );
+            NMEA2000.SendMsg(N2kMsg);
+        }
+        NMEA2000.ParseMessages();
+        vTaskDelay(500 / portTICK_PERIOD_MS); // 500 mS
+
     }
-    NMEA2000.ParseMessages();
 }

@@ -1,10 +1,10 @@
 #include <math.h>
 #include "esp_log.h"
-#include "ADCHandler.h"
+#include "AWAHandler.h"
 
 static const char *TAG = "mhu2nmea_ADCHandler";
 
-void ADCHandler::Init() {
+void AWAHandler::Init() {
 
     // Initialize I2C component
     ESP_ERROR_CHECK(i2cdev_init());
@@ -31,7 +31,7 @@ void ADCHandler::Init() {
     ESP_LOGI(TAG, "rate=%d gain=%d mode=%d", rate, gain, mode);
 }
 
-bool ADCHandler::Poll(int16_t *data, int chanNum) {
+bool AWAHandler::Poll(int16_t *data, int chanNum) {
     const ads111x_mux_t mux[] = {ADS111X_MUX_0_GND, ADS111X_MUX_1_GND, ADS111X_MUX_2_GND, ADS111X_MUX_3_GND};
 
     for(int ch_idx =0; ch_idx < chanNum; ch_idx++) {
@@ -49,7 +49,7 @@ bool ADCHandler::Poll(int16_t *data, int chanNum) {
                 data[ch_idx] = value;
                 break;
             }
-            vTaskDelay(1 / portTICK_PERIOD_MS); // 50 mS
+            vTaskDelay(1 / portTICK_PERIOD_MS); // 1 mS
         }
         if (ms_count == 3){
             ESP_LOGE(TAG, "Was busy for ch %d", ch_idx);
@@ -60,7 +60,7 @@ bool ADCHandler::Poll(int16_t *data, int chanNum) {
     return true;
 }
 
-bool ADCHandler::pollAwa(float &awaRad) {
+bool AWAHandler::pollAwa(float &awaRad) {
     int16_t adc_data[4];
     if ( Poll(adc_data, 3) ) {
         auto red = (float) adc_data[0];
@@ -89,3 +89,41 @@ bool ADCHandler::pollAwa(float &awaRad) {
 
     return false;
 }
+
+[[noreturn]] void AWAHandler::AWATask() {
+
+    Init();
+
+    for( ;; ){
+        float awa;
+        bool validAwa = this->pollAwa(awa);
+        Event evt = {
+                .src = AWA_POLL,
+                .u = {
+                        .awa = {
+                            .isValid = validAwa,
+                            .value = awa
+                        }
+                }
+        };
+        xQueueSend(eventQueue, &evt, 0);
+
+        vTaskDelay(500 / portTICK_PERIOD_MS); // 500 mS
+    }
+}
+
+static void awa_task( void *me ) {
+    ((AWAHandler *)me)->AWATask();
+}
+
+void AWAHandler::StartTask() {
+
+    xTaskCreate(
+            awa_task,         /* Function that implements the task. */
+            "AWATask",            /* Text name for the task. */
+            16 * 1024,        /* Stack size in words, not bytes. */
+            ( void * ) this,  /* Parameter passed into the task. */
+            tskIDLE_PRIORITY + 1, /* Priority at which the task is created. */
+            nullptr );        /* Used to pass out the created task's handle. */
+}
+
