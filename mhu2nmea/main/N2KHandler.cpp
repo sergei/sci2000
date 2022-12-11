@@ -9,9 +9,9 @@ const unsigned long TransmitMessages[] PROGMEM={130306,  // Wind Speed
 
 void N2KHandler::Init() {
 
-//  NMEA2000.SetForwardStream(&Serial);            // PC output on due native port
-//  NMEA2000.SetForwardType(tNMEA2000::fwdt_Text); // Show in clear text
-// NMEA2000.EnableForward(false);                  // Disable all msg forwarding to USB (=Serial)
+    NMEA2000.SetForwardStream(&debugStream);         // PC output on idf monitor
+    NMEA2000.SetForwardType(tNMEA2000::fwdt_Text); // Show in clear text
+    NMEA2000.EnableForward(true);                       // Disable all msg forwarding to USB (=Serial)
 
 
     NMEA2000.SetN2kCANMsgBufSize(8);

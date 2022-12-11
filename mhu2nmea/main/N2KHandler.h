@@ -2,6 +2,7 @@
 #define MHU2NMEA_N2KHANDLER_H
 
 #include "freertos/FreeRTOS.h"
+#include "ESP32N2kStream.h"
 #include <freertos/semphr.h>
 #include <freertos/task.h>
 #include <freertos/timers.h>
@@ -31,7 +32,7 @@ private:
     float awsKts = 0;
     int64_t awsUpdateTime = 0;
 
-
+    ESP32N2kStream debugStream;
 };
 
 

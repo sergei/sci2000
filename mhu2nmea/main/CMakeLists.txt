@@ -4,6 +4,7 @@ idf_component_register(
         N2KHandler.cpp
         AWAHandler.cpp
         CNTHandler.cpp
+        ESP32N2kStream.cpp
     INCLUDE_DIRS
         ""
 )
