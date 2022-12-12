@@ -6,14 +6,17 @@
 
 #include "NMEA2000_esp32.h"
 #include "N2kMessages.h"
+#include "NMEA2000_esp32_twai.h"
 
-tNMEA2000_esp32 NMEA2000(ESP32_CAN_TX_PIN, ESP32_CAN_RX_PIN);
+//tNMEA2000_esp32 NMEA2000(ESP32_CAN_TX_PIN, ESP32_CAN_RX_PIN);
+NMEA2000_esp32_twai NMEA2000(ESP32_CAN_TX_PIN, ESP32_CAN_RX_PIN, TWAI_MODE_NO_ACK);
 
 const unsigned long TransmitMessages[] PROGMEM={130306,  // Wind Speed
                                                 0};
 static const char *TAG = "mhu2nmea_N2KHandler";
 
 void N2KHandler::Init() {
+    esp_log_level_set("NMEA2000_esp32_twai", ESP_LOG_DEBUG); // enable DEBUG logs from ESP32_TWAI layer
 
     NMEA2000.SetForwardStream(&debugStream);         // PC output on idf monitor
     NMEA2000.SetForwardType(tNMEA2000::fwdt_Text); // Show in clear text
@@ -107,7 +110,7 @@ int nmea2000_esp32_getTxFramesCnt();  // Added to components/NMEA2000_esp32/NMEA
             SetN2kWindSpeed(N2kMsg, this->uc_WindSeqId++, localAwsMs, localAwaRad, N2kWind_Apparent );
             ESP_LOGI(TAG, "Start sending ");
             bool sentOk = NMEA2000.SendMsg(N2kMsg);
-            ESP_LOGI(TAG, "SendMsg %s sent frame cnt %d", sentOk ? "OK" : "Failed", nmea2000_esp32_getTxFramesCnt());
+            ESP_LOGI(TAG, "SendMsg %s", sentOk ? "OK" : "Failed");
         }
 
         NMEA2000.ParseMessages();
