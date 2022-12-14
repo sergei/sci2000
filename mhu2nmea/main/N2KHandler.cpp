@@ -1,12 +1,8 @@
+#include <cmath>
+
 #include <esp_log.h>
 #include "N2KHandler.h"
-
-#define ESP32_CAN_TX_PIN GPIO_NUM_32
-#define ESP32_CAN_RX_PIN GPIO_NUM_34
-
-#include "NMEA2000_esp32.h"
-#include "N2kMessages.h"
-#include "NMEA2000_esp32_twai.h"
+#include "Event.hpp"
 
 //tNMEA2000_esp32 NMEA2000(ESP32_CAN_TX_PIN, ESP32_CAN_RX_PIN);
 NMEA2000_esp32_twai NMEA2000(ESP32_CAN_TX_PIN, ESP32_CAN_RX_PIN, TWAI_MODE_NO_ACK);
@@ -15,13 +11,23 @@ const unsigned long TransmitMessages[] PROGMEM={130306,  // Wind Speed
                                                 0};
 static const char *TAG = "mhu2nmea_N2KHandler";
 
-void N2KHandler::Init() {
-    esp_log_level_set("NMEA2000_esp32_twai", ESP_LOG_DEBUG); // enable DEBUG logs from ESP32_TWAI layer
+tN2kSyncScheduler N2KHandler::s_WindScheduler(false, 1000, 500);
 
+N2KHandler::N2KHandler(const xQueueHandle &evtQueue)
+:m_evtQueue(evtQueue)
+,m_busListener(evtQueue)
+{
+}
+
+
+void N2KHandler::Init() {
+
+    esp_log_level_set("NMEA2000_esp32_twai", ESP_LOG_DEBUG); // enable DEBUG logs from ESP32_TWAI layer
     NMEA2000.SetForwardStream(&debugStream);         // PC output on idf monitor
     NMEA2000.SetForwardType(tNMEA2000::fwdt_Text); // Show in clear text
     NMEA2000.EnableForward(true);                       // Disable all msg forwarding to USB (=Serial)
 
+    NMEA2000.setBusEventListener(&m_busListener);
 
     NMEA2000.SetN2kCANMsgBufSize(8);
     NMEA2000.SetN2kCANReceiveFrameBufSize(100);
@@ -46,30 +52,8 @@ void N2KHandler::Init() {
     );
 
     NMEA2000.SetMode(tNMEA2000::N2km_NodeOnly);
-
     NMEA2000.ExtendTransmitMessages(TransmitMessages);
-}
-
-
-void N2KHandler::SetAwa(bool isValid, float value) {
-    xSemaphoreTake(awaMutex, portMAX_DELAY);
-    isAwaValid = isValid;
-    awaRad = value;
-    awaUpdateTime = esp_timer_get_time();
-    xSemaphoreGive(awaMutex);
-}
-
-void N2KHandler::SetAws(bool isValid, float value) {
-    xSemaphoreTake(awsMutex, portMAX_DELAY);
-    isAwsValid = isValid;
-    awsKts = value;
-    awsUpdateTime = esp_timer_get_time();
-    xSemaphoreGive(awsMutex);
-}
-
-N2KHandler::N2KHandler() {
-    awaMutex = xSemaphoreCreateMutex();
-    awsMutex = xSemaphoreCreateMutex();
+    NMEA2000.SetOnOpen(OnOpen);
 }
 
 static void n2k_task( void *me ) {
@@ -87,34 +71,69 @@ void N2KHandler::StartTask() {
 
 }
 
-int nmea2000_esp32_getTxFramesCnt();  // Added to components/NMEA2000_esp32/NMEA2000_esp32.cpp:235 to count sent frame from ISR
-
 [[noreturn]] void N2KHandler::N2KTask() {
     ESP_LOGI(TAG, "Starting N2K task ");
-
     Init();
     for( ;; ) {
-//        if ( isAwsValid && isAwaValid )
-        {
-            tN2kMsg N2kMsg;
-            double localAwaRad;
-            double localAwsMs;
-            xSemaphoreTake(awsMutex, portMAX_DELAY);
-            localAwsMs = KnotsToms(awsKts);
-            xSemaphoreGive(awsMutex);
-            xSemaphoreTake(awaMutex, portMAX_DELAY);
-            localAwaRad = awaRad;
-            xSemaphoreGive(awaMutex);
+        Event evt{};
+        portBASE_TYPE res = xQueueReceive(m_evtQueue, &evt, 1);
 
-
-            SetN2kWindSpeed(N2kMsg, this->uc_WindSeqId++, localAwsMs, localAwaRad, N2kWind_Apparent );
-            ESP_LOGI(TAG, "Start sending ");
-            bool sentOk = NMEA2000.SendMsg(N2kMsg);
-            ESP_LOGI(TAG, "SendMsg %s", sentOk ? "OK" : "Failed");
+        // Check if new senso data is available
+        if (res == pdTRUE) {
+            if (evt.src == AWS){
+                awsKts = evt.u.fValue;  // FIXME convert Hz to Kts
+                isAwsValid = evt.isValid;
+            } else if (evt.src == AWA){
+                awaRad = evt.u.fValue;
+                isAwaValid = evt.isValid;
+            }else if( evt.src == CAN_DRIVER_EVENT){
+                ESP_LOGI(TAG, "Bus event, crank FSM");
+            }
         }
 
-        NMEA2000.ParseMessages();
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        // Check if it's time to send the message
+        if ( s_WindScheduler.IsTime() ) {
+            s_WindScheduler.UpdateNextTime();
 
+            tN2kMsg N2kMsg;
+            double localAwsMs = isAwsValid ? KnotsToms(awsKts) : N2kDoubleNA;
+            double localAwaRad = isAwaValid ? awaRad : N2kDoubleNA;
+            tN2kWindReference windRef = !isAwsValid && !isAwaValid ? N2kWind_Unavailable : N2kWind_Apparent;
+
+            SetN2kWindSpeed(N2kMsg, this->uc_WindSeqId++, localAwsMs, localAwaRad, windRef );
+            bool sentOk = NMEA2000.SendMsg(N2kMsg);
+            ESP_LOGI(TAG, "SetN2kWindSpeed AWS=%.0f AWA=%.1f ref=%d %s", msToKnots(localAwsMs), RadToDeg(localAwaRad), windRef, sentOk ? "OK" : "Failed");
+        }
+
+        // crank NMEA2000 state machine
+        NMEA2000.ParseMessages();
     }
 }
+
+// *****************************************************************************
+// Call back for NMEA2000 open. This will be called, when library starts bus communication.
+void N2KHandler::OnOpen() {
+    // Start schedulers now.
+    s_WindScheduler.UpdateNextTime();
+}
+
+N2KTwaiBusAlertListener::N2KTwaiBusAlertListener(QueueHandle_t const &evtQueue)
+        :m_evtQueue(evtQueue)
+{
+}
+
+void N2KTwaiBusAlertListener::onAlert(uint32_t alerts, bool isError) {
+    if ( isError ){
+        ESP_LOGE(TAG, "CAN driver error");
+    }else{
+        // CAN bus available, crank the N2K FSM
+        Event evt = {
+                .src = CAN_DRIVER_EVENT,
+                .isValid = true,
+                .u= {.uiValue = alerts}
+
+        };
+        xQueueSend(m_evtQueue, &evt, 0);
+    }
+}
+

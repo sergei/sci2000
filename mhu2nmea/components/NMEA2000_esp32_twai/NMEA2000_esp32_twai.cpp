@@ -41,14 +41,17 @@ before including NMEA2000_CAN.h or NMEA2000_esp32_twai.h
 #include "NMEA2000_esp32_twai.h"
 
 static const char *TAG = "NMEA2000_esp32_twai";
-static const int ALERTS_TO_WATCH = TWAI_ALERT_ABOVE_ERR_WARN | TWAI_ALERT_ERR_PASS | TWAI_ALERT_BUS_OFF;
+static const int ERROR_ALERTS_TO_WATCH = TWAI_ALERT_ABOVE_ERR_WARN | TWAI_ALERT_ERR_PASS | TWAI_ALERT_BUS_OFF;
+static const int DATA_EVENTS_TO_WATCH = TWAI_ALERT_TX_IDLE | TWAI_ALERT_TX_SUCCESS | TWAI_ALERT_RX_DATA;
+static const int ALERTS_TO_WATCH = ERROR_ALERTS_TO_WATCH | DATA_EVENTS_TO_WATCH;
 
 #define CTRL_TASK_PRIO                  10
 static void ctrl_task(void *arg){
     ((NMEA2000_esp32_twai *)arg)->CtrlTask();
 }
 
-NMEA2000_esp32_twai::NMEA2000_esp32_twai(gpio_num_t txPin, gpio_num_t rxPin, twai_mode_t twaiMode, uint32_t txQueueLen, uint32_t rxQueueLen)
+NMEA2000_esp32_twai::NMEA2000_esp32_twai(gpio_num_t txPin, gpio_num_t rxPin, twai_mode_t twaiMode,
+                                         uint32_t txQueueLen, uint32_t rxQueueLen)
     :m_TxPin(txPin)
     ,m_RxPin(rxPin)
     ,m_twaiMode(twaiMode)
@@ -104,6 +107,7 @@ bool NMEA2000_esp32_twai::CANSendFrame(unsigned long id, unsigned char len, cons
 
     twai_message_t message;
     memset(&message, 0, sizeof(message));
+    message.extd = 1;
     message.identifier = id;
     message.data_length_code = len;
     memcpy(message.data, buf, len);
@@ -138,6 +142,9 @@ bool NMEA2000_esp32_twai::CANGetFrame(unsigned long &id, unsigned char &len, uns
     while (true){
         uint32_t alerts;
         twai_read_alerts(&alerts, portMAX_DELAY);
+        if ( m_alertsListener != nullptr){
+            m_alertsListener->onAlert(alerts, alerts & ERROR_ALERTS_TO_WATCH);
+        }
         if (alerts & TWAI_ALERT_ABOVE_ERR_WARN) {
             ESP_LOGW(TAG, "Surpassed Error Warning Limit");
         }

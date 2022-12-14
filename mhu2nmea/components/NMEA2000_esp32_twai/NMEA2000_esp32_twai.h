@@ -54,6 +54,18 @@ before including NMEA2000_CAN.h or NMEA2000_esp32_twai.h
 #define ESP32_CAN_RX_PIN GPIO_NUM_34
 #endif
 
+
+/// Implement this class to listen for TWAI driver alerts
+class TwaiBusAlertListener {
+public:
+    /**
+     * Called when TWAI driver generates the alert
+     * \param alerts Alert mask
+     * \param isError if true, the alert contains error flag, otherwise indicates data event
+     * */
+    virtual void onAlert(uint32_t alerts, bool isError) = 0;
+};
+
 /**
  * This class implements low level CAN interface for tNMEA2000 using builtin ESP32 TWAI controller (that's how they call CAN)
  * See https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/twai.html
@@ -69,6 +81,9 @@ public:
     explicit NMEA2000_esp32_twai(gpio_num_t txPin=ESP32_CAN_TX_PIN,  gpio_num_t rxPin=ESP32_CAN_RX_PIN,
                                  twai_mode_t twaiMode = TWAI_MODE_NORMAL, uint32_t txQueueLen=5, uint32_t rxQueueLen=5);
 
+    /// Call this method to register driver alerts listener.
+    void setBusEventListener(TwaiBusAlertListener *mAlertsListener) {m_alertsListener = mAlertsListener;};
+
 protected:  // Methods the tNMEA2000 wants us to implement for given hardware
     bool CANSendFrame(unsigned long id, unsigned char len, const unsigned char *buf, bool wait_sent) override;
     bool CANOpen() override;
@@ -80,6 +95,9 @@ private:
     twai_mode_t m_twaiMode= TWAI_MODE_NORMAL;
     uint32_t m_txQueueLen=5;
     uint32_t m_rxQueueLen=5;
+    TwaiBusAlertListener *m_alertsListener= nullptr;
+
+private:
     SemaphoreHandle_t ctrl_task_sem;
 
 public:

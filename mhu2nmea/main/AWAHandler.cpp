@@ -1,4 +1,4 @@
-#include <math.h>
+#include <cmath>
 #include "esp_log.h"
 #include "AWAHandler.h"
 
@@ -79,11 +79,11 @@ bool AWAHandler::pollAwa(float &awaRad) {
         if (est_green_u < 0 && est_blue_u >= 0)
             angle = acos(-est_red_u);
         else if(est_blue_u < 0 && est_red_u >= 0)
-            angle = asin(est_green_u) + 7 * PI / 6;
+            angle = asin(est_green_u) + 7 * M_PI / 6;
         else
-            angle = asin(est_blue_u) + 11 * PI / 6;
+            angle = asin(est_blue_u) + 11 * M_PI / 6;
 
-        awaRad = fmod(angle, 2 * PI);
+        awaRad = fmod(angle, 2 * M_PI);
         return true;
     }
 
@@ -91,23 +91,17 @@ bool AWAHandler::pollAwa(float &awaRad) {
 }
 
 [[noreturn]] void AWAHandler::AWATask() {
-
     Init();
 
     for( ;; ){
         float awa;
         bool validAwa = this->pollAwa(awa);
         Event evt = {
-                .src = AWA_POLL,
-                .u = {
-                        .awa = {
-                            .isValid = validAwa,
-                            .value = awa
-                        }
-                }
+            .src = AWA,
+            .isValid = validAwa,
+            .u { .fValue = awa }
         };
         xQueueSend(eventQueue, &evt, 0);
-
         vTaskDelay(1000 / portTICK_PERIOD_MS); // 500 mS
     }
 }
@@ -117,7 +111,6 @@ static void awa_task( void *me ) {
 }
 
 void AWAHandler::StartTask() {
-
     xTaskCreate(
             awa_task,         /* Function that implements the task. */
             "AWATask",            /* Text name for the task. */
@@ -126,4 +119,3 @@ void AWAHandler::StartTask() {
             tskIDLE_PRIORITY + 1, /* Priority at which the task is created. */
             nullptr );        /* Used to pass out the created task's handle. */
 }
-

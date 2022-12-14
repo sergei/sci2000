@@ -5,7 +5,6 @@
 #include "Event.hpp"
 
 static const float NOMINAL_AMPLITUDE = 2471;  // Measured ADC output with lab supply set to 6.4 V
-static const float PI = 3.1415926535;
 
 class AWAHandler {
 public:

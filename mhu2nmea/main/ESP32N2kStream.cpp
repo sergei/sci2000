@@ -1,4 +1,3 @@
-#include <driver/uart.h>
 #include "ESP32N2kStream.h"
 #include "esp_log.h"
 

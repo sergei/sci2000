@@ -2,22 +2,17 @@
 #define MHU2NMEA_EVENT_HPP
 
 enum EventSource {
-    AWA_POLL,
-    AWS_INR
+    AWA,
+    AWS,
+    CAN_DRIVER_EVENT
 };
 
 struct Event {
     EventSource src;
+    bool isValid;
     union {
-        struct {
-            bool isValid;
-            float value;
-        }awa;
-        struct {
-          int unit;           // the PCNT unit that originated an interrupt
-          uint32_t status;    // information on the event type that caused the interrupt
-          int64_t elapsed_us; // Time since last event
-        }ctr;
+        float fValue;
+        uint32_t uiValue;
     }u;
 };
 
