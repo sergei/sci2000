@@ -2,9 +2,11 @@
 #define MHU2NMEA_EVENT_HPP
 
 enum EventSource {
-    AWA,
-    AWS,
-    CAN_DRIVER_EVENT
+    AWA
+    ,AWS
+    ,CAN_DRIVER_EVENT
+    ,MHU_AWA_CALIB_RECEIVED
+    ,MHU_AWS_CALIB_RECEIVED
 };
 
 struct Event {
@@ -13,6 +15,7 @@ struct Event {
     union {
         float fValue;
         uint32_t uiValue;
+        int32_t  iValue;
     }u;
 };
 

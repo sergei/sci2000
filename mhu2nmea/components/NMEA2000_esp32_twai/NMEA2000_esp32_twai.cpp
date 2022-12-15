@@ -126,10 +126,10 @@ bool NMEA2000_esp32_twai::CANGetFrame(unsigned long &id, unsigned char &len, uns
     //Wait for message to be received
     twai_message_t message;
     if (twai_receive(&message, pdMS_TO_TICKS(0)) == ESP_OK) {
-        ESP_LOGD(TAG,"Message received");
         id = message.identifier;
         len = message.data_length_code;
         memcpy(buf, message.data,message.data_length_code);
+        ESP_LOGD(TAG,"Message received id=%08lX, len=%d, data=%08X", id, len, (uint32_t)*buf);
         return true;
     } else {
         return false;
