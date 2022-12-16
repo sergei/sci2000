@@ -17,8 +17,8 @@ void CalibrationStorage::ReadCalibration(float &awaCorrRad, float &awsFactor) {
             ESP_LOGI(TAG, "Read AWA calibration %d ", awaCorr);
         }
         if ( (err=nvs_get_i16(handle, NVS_KEY_AWS, &awsCorr)) != ESP_OK ){
-            awaCorr = DEFAULT_AWS_CORR;
-            ESP_LOGI(TAG, "No AWA calibration found (%s) using default value %d", esp_err_to_name(err), awaCorr);
+            awsCorr = DEFAULT_AWS_CORR;
+            ESP_LOGI(TAG, "No AWS calibration found (%s) using default value %d", esp_err_to_name(err), awaCorr);
         }else{
             ESP_LOGI(TAG, "Read AWS calibration %d ", awsCorr);
         }

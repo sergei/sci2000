@@ -2,7 +2,7 @@ import argparse
 
 import serial
 
-from scripts.n2k_encoder import n2k_to_can_id
+from scripts.n2k_encoder import n2k_to_can_id, can_id_to_n2k
 
 ISO_REQUEST_PGN = 59904
 SET_MHU_CALIBRATION_PGN = 130900
@@ -46,15 +46,48 @@ def calibrate(args):
 
     raw_msg = msg.get_msg()
 
-    print(f'Will send {raw_msg}')
+    msg_sent = False
     try:
         with serial.Serial(args.port) as ser:
-            ser.write(raw_msg)
             while True:
                 line = ser.readline()
-                print(line)
+
+                if parse_line(line):
+                    return
+
+                if not msg_sent:
+                    print(f'Sending [{raw_msg}]')
+                    ser.write(raw_msg)
+                    msg_sent = True
+
     except IOError as error:
         print(f'{error}')
+
+
+def parse_mhu_cal(data_ascii):
+    print(data_ascii)
+    data = [int(x, 16) for x in data_ascii]
+    print(data)
+    dlc = data[0]
+    awa_cal = (data[1]) | (data[2] << 8)
+    aws_cal = (data[3]) | (data[4] << 8)
+    print(f'len={dlc} awa_cal = 0x{awa_cal:04x} aws_cal=0x{aws_cal:04x}')
+    awa_cal *= 0.001
+    aws_cal *= 0.001
+    print(f'awa_cal = {awa_cal:.1f} aws_cal={aws_cal:.3f}')
+    return awa_cal, aws_cal
+
+
+def parse_line(line):
+    t = line.decode('ascii').split()
+    print(t)
+    can_id = int(t[2], 16)
+    prio, pgn, src, dst = can_id_to_n2k(can_id)
+    print(f'prio={prio}, pgn={pgn}, src={src}, dst={dst}')
+    if pgn == GET_MHU_CALIBRATION_PGN:
+        parse_mhu_cal(t[4:])
+        return True
+    return False
 
 
 if __name__ == '__main__':

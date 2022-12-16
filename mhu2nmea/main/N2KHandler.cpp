@@ -218,9 +218,10 @@ static bool SendCalValuesPgn() {
     tN2kMsg N2kMsg;
     N2kMsg.SetPGN(GET_MHU_CALIBRATION_PGN);
     N2kMsg.Priority=2;
-    N2kMsg.AddByte(0);
     N2kMsg.Add2ByteDouble(awaCorrRad,AWA_CAL_SCALE);
     N2kMsg.Add2ByteDouble(awsFactor,AWS_CAL_SCALE);
+//    N2kMsg.Add2ByteUInt(0x0102);
+//    N2kMsg.Add2ByteUInt(0x0304);
     return NMEA2000.SendMsg(N2kMsg);
 }
 
