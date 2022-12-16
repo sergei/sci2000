@@ -5,8 +5,7 @@ enum EventSource {
     AWA
     ,AWS
     ,CAN_DRIVER_EVENT
-    ,MHU_AWA_CALIB_RECEIVED
-    ,MHU_AWS_CALIB_RECEIVED
+    ,CALIBRATION_UPDATED
 };
 
 struct Event {

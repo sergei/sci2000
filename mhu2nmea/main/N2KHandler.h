@@ -6,26 +6,21 @@
 #include <freertos/semphr.h>
 #include <freertos/task.h>
 #include <freertos/timers.h>
-#include <nvs.h>
 
 #define ESP32_CAN_TX_PIN GPIO_NUM_32
 #define ESP32_CAN_RX_PIN GPIO_NUM_34
-
-static const int16_t DEFAULT_AWS_CORR = 1000;
-static const int16_t DEFAULT_AWA_CORR = 0;
-
-static const char *const NVS_KEY_AWA = "awa";
-static const char *const NVS_KEY_AWS = "aws";
 
 #include "N2kMessages.h"
 #include "NMEA2000_esp32_twai.h"
 
 const unsigned long SET_MHU_CALIBRATION_PGN = 130900;
-const unsigned long GET_MHU_CALIBRATION_PGN = 130900;
+const unsigned long GET_MHU_CALIBRATION_PGN = 130901;
 
 enum MHU_CALIBR_DEST {
-    MHU_CALIBR_DEST_AWA = 0,
-    MHU_CALIBR_DEST_AWS = 1,
+    MHU_CALIBR_SET_AWA = 0,
+    MHU_CALIBR_SET_AWS = 1,
+    MHU_CALIBR_CLEAR_AWA = 2,
+    MHU_CALIBR_CLEAR_AWS = 3,
 };
 
 class N2KTwaiBusAlertListener: public TwaiBusAlertListener{
@@ -54,12 +49,6 @@ public:
 private:
     void Init();
 
-    static nvs_handle_t openNvs();
-    static void closeNvs(nvs_handle_t handle);
-    void ReadCalibration();
-    static void StoreAwaCalibration(int16_t awaCorr) ;
-    static void StoreAwsCalibration(int16_t awsCorr) ;
-
     static void OnOpen();
 
     const xQueueHandle &m_evtQueue;
@@ -76,12 +65,11 @@ private:
     int64_t awsUpdateTime = 0;
 
     // Calibration values
-    int16_t m_awaCorr = DEFAULT_AWA_CORR;     // Add this value to get corrected AWA (tenth of degree)
-    int16_t m_awsCorr = DEFAULT_AWS_CORR;  // Multiply by this value to get corrected AWS (pro mile)
+    float m_awaCorrRad = 0;
+    float m_awsFactor = 1;
 
     ESP32N2kStream debugStream;
     static tN2kSyncScheduler s_WindScheduler;
-
 };
 
 
