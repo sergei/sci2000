@@ -10,30 +10,20 @@
 NMEA2000_esp32_twai NMEA2000(ESP32_CAN_TX_PIN, ESP32_CAN_RX_PIN, TWAI_MODE_NORMAL);
 
 static const unsigned long TX_PGNS[] PROGMEM={130306,  // Wind Speed
-                                              GET_MHU_CALIBRATION_PGN,
+                                              MHU_CALIBRATION_PGN,
                                                 0};
 
-static const unsigned long RX_PGNS[] PROGMEM={SET_MHU_CALIBRATION_PGN,
-                                                0};
+static const unsigned long RX_PGNS[] PROGMEM={MHU_CALIBRATION_PGN,
+                                              0};
 
 static const char *TAG = "mhu2nmea_N2KHandler";
 
 tN2kSyncScheduler N2KHandler::s_WindScheduler(false, 1000, 500);
 
-static bool SendCalValuesPgn();
-
-static bool ISORequestHandler(unsigned long RequestedPGN, unsigned char , int ){
-    ESP_LOGI(TAG, "Got ISO request for PGN %ld", RequestedPGN);
-    if ( RequestedPGN == GET_MHU_CALIBRATION_PGN) {
-        return SendCalValuesPgn();
-    }
-    return false;
-}
-
 N2KHandler::N2KHandler(const xQueueHandle &evtQueue)
-:m_evtQueue(evtQueue)
-,m_calMsgHandler(evtQueue,SET_MHU_CALIBRATION_PGN, &NMEA2000)
-,m_busListener(evtQueue)
+    : m_evtQueue(evtQueue)
+    , m_MhuCalGroupFunctionHandler(*this, &NMEA2000)
+    , m_busListener(evtQueue)
 {
 }
 
@@ -64,8 +54,8 @@ void N2KHandler::Init() {
     // Det device information
     NMEA2000.SetDeviceInformation(SerialNumber, // Unique number. Use e.g. Serial number.
                                   130,    // Device function =  Atmospheric. See codes on http://www.nmea.org/Assets/20120726%20nmea%202000%20class%20%26%20function%20codes%20v%202.00.pdf
-                                  85,       // Device class     = External Environment. See codes on http://www.nmea.org/Assets/20120726%20nmea%202000%20class%20%26%20function%20codes%20v%202.00.pdf
-                                  2020 // Just chosen free from code list on http://www.nmea.org/Assets/20121020%20nmea%202000%20registration%20list.pdf
+                                    85,       // Device class     = External Environment. See codes on http://www.nmea.org/Assets/20120726%20nmea%202000%20class%20%26%20function%20codes%20v%202.00.pdf
+                               SCI_MFG_CODE 
     );
 
     NMEA2000.SetMode(tNMEA2000::N2km_NodeOnly);
@@ -73,8 +63,7 @@ void N2KHandler::Init() {
     NMEA2000.ExtendReceiveMessages(RX_PGNS);
     NMEA2000.ExtendSingleFrameMessages(RX_PGNS);
 
-    NMEA2000.AttachMsgHandler(&m_calMsgHandler);
-    NMEA2000.SetISORqstHandler(ISORequestHandler);
+    NMEA2000.AddGroupFunctionHandler(&m_MhuCalGroupFunctionHandler);
     NMEA2000.SetOnOpen(OnOpen);
 }
 
@@ -116,9 +105,6 @@ void N2KHandler::StartTask() {
                     break;
                 case CAN_DRIVER_EVENT:
                     ESP_LOGI(TAG, "Bus event, just crank FSM");
-                    break;
-                case CALIBRATION_UPDATED:
-                    CalibrationStorage::ReadCalibration(m_awaCorrRad, m_awsFactor);
                     break;
             }
         }
@@ -169,61 +155,133 @@ void N2KTwaiBusAlertListener::onAlert(uint32_t alerts, bool isError) {
     }
 }
 
-CalibrationMessageHandler::CalibrationMessageHandler(QueueHandle_t const &evtQueue, unsigned long pgn, tNMEA2000 *pNMEA2000)
-        :tNMEA2000::tMsgHandler(pgn, pNMEA2000)
-        ,m_evtQueue(evtQueue)
-{
-}
-
-void CalibrationMessageHandler::HandleMsg(const tN2kMsg &N2kMsg) {
-    if ( N2kMsg.PGN == SET_MHU_CALIBRATION_PGN){
-        int Index=0;
-        unsigned char sid = N2kMsg.GetByte(Index);
-        auto dest = (MHU_CALIBR_DEST)N2kMsg.GetByte(Index);
-        int16_t value = N2kMsg.Get2ByteInt(Index);
-
-        ESP_LOGI(TAG, "Got calibration pgn %ld(%08lX), sid=%d, des=%d, value = %d ", N2kMsg.PGN, N2kMsg.PGN, sid, dest, value);
-
-        switch( dest ) {
-            case MHU_CALIBR_SET_AWA:
-                CalibrationStorage::UpdateAwaCalibration(value);
-                break;
-            case MHU_CALIBR_CLEAR_AWA:
-                CalibrationStorage::UpdateAwaCalibration(DEFAULT_AWA_CORR);
-                break;
-            case MHU_CALIBR_SET_AWS:
-                CalibrationStorage::UpdateAwsCalibration(value);
-                break;
-            case MHU_CALIBR_CLEAR_AWS:
-                CalibrationStorage::UpdateAwsCalibration(DEFAULT_AWS_CORR);
-                break;
-        }
-
-        Event evt = {
-            .src = CALIBRATION_UPDATED,
-            .isValid = true,
-            .u = {}
-        };
-        xQueueSend(m_evtQueue, &evt, 0);
-    }
-}
 
 // Send PGN GET_MHU_CALIBRATION_PGN
-static bool SendCalValuesPgn() {
+bool N2KHandler::SendCalValues() {
     // Get calibration values
     float awaCorrRad, awsFactor;
     CalibrationStorage::ReadCalibration(awaCorrRad, awsFactor);
 
     // Send PGN to requester
     tN2kMsg N2kMsg;
-    N2kMsg.SetPGN(GET_MHU_CALIBRATION_PGN);
+    N2kMsg.SetPGN(MHU_CALIBRATION_PGN);
     N2kMsg.Priority=2;
+    N2kMsg.Add2ByteUInt((SCI_MFG_CODE << 5) | (0x03 << 3) | SCI_INDUSTRY_CODE);
     N2kMsg.Add2ByteDouble(awaCorrRad,AWA_CAL_SCALE);
     N2kMsg.Add2ByteDouble(awsFactor,AWS_CAL_SCALE);
-//    N2kMsg.Add2ByteUInt(0x0102);
-//    N2kMsg.Add2ByteUInt(0x0304);
     return NMEA2000.SendMsg(N2kMsg);
 }
 
+/*
+Your PGN will be then requested by using PGN 126208 and by setting fields:
+Field 1: Request Group Function Code = 0 (Request Message), 8 bits
+Field 2: PGN = 130900, 24 bits
+Field 3: Transmission interval = FFFF FFFF (Do not change interval), 32 bits
+Field 4: Transmission interval offset = 0xFFFF (Do not change offset), 16 bits
+Field 5: Number of Pairs of Request Parameters to follow = 2, 8 bits
+Field 6: Field number of requested parameter = 1, 8 bits
+Field 7: Value of requested parameter = mfg code, 16 bits
+Field 8: Field number of requested parameter = 3, 8 bits
+Field 9: Value of requested parameter = 4 (Marine), 8 bits
+ */
+bool N2KHandler::MhuCalGroupFunctionHandler::HandleRequest(const tN2kMsg &N2kMsg, uint32_t TransmissionInterval,
+                                                           uint16_t TransmissionIntervalOffset,
+                                                           uint8_t NumberOfParameterPairs, int iDev) {
+    ESP_LOGI(TAG, "N2KHandler::MhuCalGroupFunctionHandler::HandleRequest NumberOfParameterPairs=%d", NumberOfParameterPairs);
+    int Index;
+    StartParseRequestPairParameters(N2kMsg,Index);
+    uint16_t mfgCode = 0xFFFF;
+    uint8_t indCode = 0xFF;
+    for( int i=0; i < NumberOfParameterPairs; i++) {
+        uint8_t fn = N2kMsg.GetByte(Index);
+        switch (fn) {
+            case 1: // Mfg code
+                mfgCode = N2kMsg.Get2ByteUInt(Index);
+                ESP_LOGI(TAG, "mfgCode=%d", mfgCode);
+                break;
+            case 3: // Industry code
+                indCode = N2kMsg.GetByte(Index);
+                ESP_LOGI(TAG, "indCode=%d", indCode);
+                break;
+            default:
+                break;
+        }
+    }
 
+    // Verify if it's this proprietary PGN belongs to us
+    if ( mfgCode == SCI_MFG_CODE && indCode == SCI_INDUSTRY_CODE) {
+        m_n2kHandler.SendCalValues();
+    }else{
+        ESP_LOGE(TAG, "Ignore request with mfgCode=%d indCode=%d", mfgCode, indCode);
+    }
+    return false;
+}
 
+/*
+Field 1: Request Group Function Code = 1 (Command Message), 8 bits
+Field 2: PGN = 130900, 24 bits
+Field 3: Priority Setting = 0x8 (do not change priority), 4 bits
+Field 4: Reserved =0xf, 4 bits
+Field 5: Number of Pairs of Request Parameters to follow = 3, 8 bits
+Field 6: Field number of commanded parameter = 1, 8 bits
+Field 7: Value of commanded parameter = mfg code, 16 bits
+Field 8: Field number of commanded parameter = 3, 8 bits
+Field 9: Value of commanded parameter = 4 (Marine), 8 bits
+Field 10: Field number of commanded parameter = 4, 8 bits
+Field 11: Value of commanded parameter = AWSOffset, 16 bits
+ */
+bool N2KHandler::MhuCalGroupFunctionHandler::HandleCommand(const tN2kMsg &N2kMsg, uint8_t PrioritySetting,
+                                                           uint8_t NumberOfParameterPairs, int iDev) {
+    ESP_LOGI(TAG, "N2KHandler::MhuCalGroupFunctionHandler::HandleCommand NumberOfParameterPairs=%d", NumberOfParameterPairs);
+    int Index;
+    StartParseCommandPairParameters(N2kMsg,Index);
+    uint16_t mfgCode = 0xFFFF;
+    uint8_t indCode = 0xFF;
+    int16_t value;
+    bool calWasUpdated = false;
+    for( int i=0; i < NumberOfParameterPairs; i++){
+        uint8_t fn = N2kMsg.GetByte(Index);
+        switch (fn){
+            case 1: // Mfg code
+                mfgCode = N2kMsg.Get2ByteUInt(Index);
+                ESP_LOGI(TAG, "mfgCode=%d", mfgCode);
+                break;
+            case 3: // Industry code
+                indCode = N2kMsg.GetByte(Index);
+                ESP_LOGI(TAG, "indCode=%d", indCode);
+                break;
+            case 4: // Field 4: AWAOffset, 2 bytes
+                value = N2kMsg.Get2ByteInt(Index);
+                ESP_LOGI(TAG, "AWAOffset=%d", value);
+                if ( mfgCode == SCI_MFG_CODE && indCode == SCI_INDUSTRY_CODE) { // This PGN belongs to us
+                    if (value == MHU_CALIBRATION_RESTORE_DEFAULT ){ // Restore default
+                        CalibrationStorage::UpdateAwaCalibration(DEFAULT_AWA_CORR, false);
+                    }else{
+                        CalibrationStorage::UpdateAwaCalibration(value, true);
+                    }
+                    calWasUpdated = true;
+                }
+                break;
+            case 5: // AWSMultiplier, 2 bytes
+                value = N2kMsg.Get2ByteInt(Index);
+                ESP_LOGI(TAG, "AWSMultiplier=%d", value);
+                if ( mfgCode == SCI_MFG_CODE && indCode == SCI_INDUSTRY_CODE) { // This PGN belongs to us
+                    if (value == MHU_CALIBRATION_RESTORE_DEFAULT ){ // Restore default
+                        CalibrationStorage::UpdateAwsCalibration(DEFAULT_AWS_CORR, false);
+                    }else{
+                        CalibrationStorage::UpdateAwsCalibration(value, true);
+                    }
+                    calWasUpdated = true;
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    if ( calWasUpdated ){
+        CalibrationStorage::ReadCalibration(m_n2kHandler.m_awaCorrRad, m_n2kHandler.m_awsFactor);
+    }
+
+    return false;
+}

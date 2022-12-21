@@ -18,8 +18,8 @@ public:
     static void closeNvs(nvs_handle_t handle);
     static nvs_handle_t openNvs();
     static void ReadCalibration(float &awaCorrRad, float &awsFactor);
-    static void UpdateAwaCalibration(int16_t deltaAwaCorr) ;
-    static void UpdateAwsCalibration(int16_t awsCorr) ;
+    static void UpdateAwaCalibration(int16_t awaCorr, bool isRelative = false);
+    static void UpdateAwsCalibration(int16_t awsCorr, bool isRelative = false);
 };
 
 

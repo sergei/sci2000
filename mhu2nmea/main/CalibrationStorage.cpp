@@ -29,41 +29,53 @@ void CalibrationStorage::ReadCalibration(float &awaCorrRad, float &awsFactor) {
     awsFactor = (float)(awsCorr) * AWS_CAL_SCALE;
 }
 
-void CalibrationStorage::UpdateAwaCalibration(int16_t deltaAwaCorr) {
+void CalibrationStorage::UpdateAwaCalibration(int16_t awaCorr, bool isRelative) {
     nvs_handle_t handle = openNvs();
     if (handle) {
-        int16_t awaCorr;
+        int16_t currAwaCorr;
         // Read current value
-        if (nvs_get_i16(handle, NVS_KEY_AWA, &awaCorr) != ESP_OK ){
-            awaCorr = DEFAULT_AWA_CORR;
+        if (nvs_get_i16(handle, NVS_KEY_AWA, &currAwaCorr) != ESP_OK ){
+            currAwaCorr = DEFAULT_AWA_CORR;
         }
 
         // Update with received delta
-        auto newAwaCorr = (int16_t )(awaCorr + deltaAwaCorr);
+        int16_t newAwaCorr;
+        if ( isRelative ){
+            newAwaCorr = (int16_t)(currAwaCorr + awaCorr);
+            ESP_LOGI(TAG, "AWA calibration %d + %d", currAwaCorr, awaCorr);
+        }else{
+            newAwaCorr = awaCorr;
+        }
 
         // Store updated value
         esp_err_t err = nvs_set_i16(handle, NVS_KEY_AWA, newAwaCorr);
-        ESP_LOGI(TAG, "AWA calibration %d = %d + %d storied %s", newAwaCorr, awaCorr, deltaAwaCorr, err == ESP_OK ? "OK" : "Failed");
+        ESP_LOGI(TAG, "AWA calibration %d  Stored %s", newAwaCorr, err == ESP_OK ? "OK" : "Failed");
         err = nvs_commit(handle);
         ESP_LOGI(TAG, "AWA calibration committed %s", err == ESP_OK ? "OK" : "Failed");
         closeNvs(handle);
     }
 }
 
-void CalibrationStorage::UpdateAwsCalibration(int16_t awsCorrDelta) {
+void CalibrationStorage::UpdateAwsCalibration(int16_t awsCorr, bool isRelative) {
     nvs_handle_t handle = openNvs();
     if (handle) {
-        int16_t awsCorr;
+        int16_t currAwsCorr;
 
         // Read current value
-        if ( nvs_get_i16(handle, NVS_KEY_AWS, &awsCorr) != ESP_OK ){
-            awsCorr = DEFAULT_AWS_CORR;
+        if (nvs_get_i16(handle, NVS_KEY_AWS, &currAwsCorr) != ESP_OK ){
+            currAwsCorr = DEFAULT_AWS_CORR;
         }
         // Update with received delta
-        auto newAwsCorr = (int16_t)(((float)awsCorr*AWA_CAL_SCALE * (float)awsCorrDelta*AWA_CAL_SCALE) / AWA_CAL_SCALE);
+        int16_t newAwsCorr;
+        if ( isRelative ){
+            newAwsCorr = (int16_t)(((float)currAwsCorr * AWA_CAL_SCALE * (float)awsCorr * AWA_CAL_SCALE) / AWA_CAL_SCALE);
+            ESP_LOGI(TAG, "Relative AWS calibration %d * %d", currAwsCorr, awsCorr);
+        }else{
+            newAwsCorr = awsCorr;
+        }
 
         esp_err_t err = nvs_set_i16(handle, NVS_KEY_AWS, newAwsCorr);
-        ESP_LOGI(TAG, "AWS calibration %d = %d * %d storied %s", newAwsCorr, awsCorr, awsCorrDelta, err == ESP_OK ? "OK" : "Failed");
+        ESP_LOGI(TAG, "AWS calibration %d Stored %s", newAwsCorr, err == ESP_OK ? "OK" : "Failed");
         err = nvs_commit(handle);
         ESP_LOGI(TAG, "AWS calibration committed %s", err == ESP_OK ? "OK" : "Failed");
         closeNvs(handle);

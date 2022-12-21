@@ -13,15 +13,19 @@
 #include "N2kMessages.h"
 #include "NMEA2000_esp32_twai.h"
 
-const unsigned long SET_MHU_CALIBRATION_PGN = 130900;
-const unsigned long GET_MHU_CALIBRATION_PGN = 130901;
+static const int SCI_MFG_CODE = 2020;    // Our mfg code.
+static const int SCI_INDUSTRY_CODE = 4;  // Marine industry
 
-enum MHU_CALIBR_DEST {
-    MHU_CALIBR_SET_AWA = 0,
-    MHU_CALIBR_SET_AWS = 1,
-    MHU_CALIBR_CLEAR_AWA = 2,
-    MHU_CALIBR_CLEAR_AWS = 3,
-};
+/*
+    Proprietary PGN 130900 to send/receive AWA and AWS calibration
+    Field 1: MfgCode 11 bits
+    Field 2: reserved 2 bits. Must be set all 1
+    Field 3: Industry code 3 bits. Use Marine=4
+    Field 4: AWAOffset, 2 bytes 0xfffe - restore default 0xFFFF - leave unchanged
+    Field 5: AWSMultiplier, 2 bytes  0xfffe - restore default 0xFFFF - leave unchanged
+ */
+static const unsigned long MHU_CALIBRATION_PGN = 130900;  // Set/get MHU calibration
+static const int MHU_CALIBRATION_RESTORE_DEFAULT = (int16_t) 0xfffe;
 
 class N2KTwaiBusAlertListener: public TwaiBusAlertListener{
 public:
@@ -31,15 +35,29 @@ private:
     const xQueueHandle &m_evtQueue;
 };
 
-class CalibrationMessageHandler: public tNMEA2000::tMsgHandler {
-public:
-    explicit CalibrationMessageHandler(const xQueueHandle &evtQueue, unsigned long _PGN, tNMEA2000 *_pNMEA2000);
-    void HandleMsg(const tN2kMsg &N2kMsg) override;
-private:
-    const xQueueHandle &m_evtQueue;
-};
-
 class N2KHandler {
+
+    /// Class to handle NMEA Group function commands sent by PGN 126208
+    class MhuCalGroupFunctionHandler: public tN2kGroupFunctionHandler{
+    public:
+        MhuCalGroupFunctionHandler(N2KHandler &n2kHandler, tNMEA2000 *_pNMEA2000):
+           tN2kGroupFunctionHandler(_pNMEA2000,MHU_CALIBRATION_PGN), m_n2kHandler(n2kHandler) {}
+    protected:
+        /// Network requested calibration values
+        /// We reply with PGN 130900 containing these values
+        bool HandleRequest(const tN2kMsg &N2kMsg,
+                                   uint32_t TransmissionInterval,
+                                   uint16_t TransmissionIntervalOffset,
+                                   uint8_t  NumberOfParameterPairs,
+                                   int iDev) override;
+        /// Network wants to change the calibration
+        /// This method decodes the comamnd and updates the calibration
+        bool HandleCommand(const tN2kMsg &N2kMsg, uint8_t PrioritySetting, uint8_t NumberOfParameterPairs, int iDev) override;
+    private:
+        N2KHandler &m_n2kHandler;
+    };
+
+
 public:
     explicit N2KHandler(const xQueueHandle &evtQueue);
     void StartTask();
@@ -50,9 +68,10 @@ private:
     void Init();
 
     static void OnOpen();
+    static bool SendCalValues();
 
     const xQueueHandle &m_evtQueue;
-    CalibrationMessageHandler m_calMsgHandler;
+    MhuCalGroupFunctionHandler m_MhuCalGroupFunctionHandler;
     N2KTwaiBusAlertListener m_busListener;
     unsigned char uc_WindSeqId = 0;
 
@@ -70,6 +89,7 @@ private:
 
     ESP32N2kStream debugStream;
     static tN2kSyncScheduler s_WindScheduler;
+
 };
 
 
