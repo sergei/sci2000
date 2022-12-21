@@ -18,7 +18,7 @@ void CalibrationStorage::ReadCalibration(float &awaCorrRad, float &awsFactor) {
         }
         if ( (err=nvs_get_i16(handle, NVS_KEY_AWS, &awsCorr)) != ESP_OK ){
             awsCorr = DEFAULT_AWS_CORR;
-            ESP_LOGI(TAG, "No AWS calibration found (%s) using default value %d", esp_err_to_name(err), awaCorr);
+            ESP_LOGI(TAG, "No AWS calibration found (%s) using default value %d", esp_err_to_name(err), awsCorr);
         }else{
             ESP_LOGI(TAG, "Read AWS calibration %d ", awsCorr);
         }
@@ -68,7 +68,7 @@ void CalibrationStorage::UpdateAwsCalibration(int16_t awsCorr, bool isRelative) 
         // Update with received delta
         int16_t newAwsCorr;
         if ( isRelative ){
-            newAwsCorr = (int16_t)(((float)currAwsCorr * AWA_CAL_SCALE * (float)awsCorr * AWA_CAL_SCALE) / AWA_CAL_SCALE);
+            newAwsCorr = (int16_t)(((float)currAwsCorr * AWS_CAL_SCALE * (float)awsCorr * AWS_CAL_SCALE) / AWS_CAL_SCALE);
             ESP_LOGI(TAG, "Relative AWS calibration %d * %d", currAwsCorr, awsCorr);
         }else{
             newAwsCorr = awsCorr;

@@ -6,8 +6,8 @@
 static const int16_t DEFAULT_AWS_CORR = 1000;
 static const int16_t DEFAULT_AWA_CORR = 0;
 
-static const char *const NVS_KEY_AWA = "awa";
-static const char *const NVS_KEY_AWS = "aws";
+static const char *const NVS_KEY_AWA = "cal_awa";
+static const char *const NVS_KEY_AWS = "cal_aws";
 
 
 static const float AWA_CAL_SCALE = 0.001f;
