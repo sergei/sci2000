@@ -1,52 +1,48 @@
-#include <driver/pcnt.h>
 #include "CNTHandler.h"
 #include "esp_log.h"
 
-#define PCNT_H_LIM_VAL      4   // Interrupt on every four pulses
 #define PCNT_L_LIM_VAL     (-15)
 
 static xQueueHandle evtQueue; // Internal queue to communicate between interrupt and main task
 static const char *TAG = "mhu2nmea_CNTHandler";
 
-CNTHandler::CNTHandler( const xQueueHandle &dataQueue, int pulseGpio, pcnt_unit_t unit)
-:pulseGpio(pulseGpio)
-,unit(unit)
-,m_dataQueue(dataQueue)
+CNTHandler::CNTHandler()
 {
+    for( int i = 0; i < PCNT_UNIT_MAX; i++){
+        m_CtrHandlers[i] = nullptr;
+        m_pulsesPerInterrupt[i] = 1;
+    }
 }
 
 /* Decode what PCNT's unit originated an interrupt
  * and pass this information together with the event type
  * the main task using a queue.
  */
+int64_t CNTHandler::last_timer_values[PCNT_UNIT_MAX];
 static void IRAM_ATTR pcnt_intr_handler(void *arg)
 {
-    static int64_t last_timer_value = -1;
     int64_t current_timer_value = esp_timer_get_time();
 
     auto pcnt_unit = (pcnt_unit_t)(int)arg;
     pcnt_evt_t evt = {
             .unit = pcnt_unit,
             .status = 0,
-            .elapsed_us = current_timer_value - last_timer_value
+            .elapsed_us = current_timer_value - CNTHandler::last_timer_values[pcnt_unit]
     };
     /* Save the PCNT event type that caused an interrupt
        to pass it to the main program */
     pcnt_get_event_status(pcnt_unit, &evt.status);
     xQueueSendFromISR(evtQueue, &evt, NULL);
-    last_timer_value = current_timer_value;
+    CNTHandler::last_timer_values[pcnt_unit] = current_timer_value;
 }
 
 static void counter_task( void *me ) {
     ((CNTHandler *)me)->CounterTask();
 }
 
-/* Initialize PCNT functions:
- *  - configure and initialize PCNT
- *  - set up the input filter
- *  - set up the counter events to watch
- */
 void CNTHandler::Start() {
+    ESP_LOGI(TAG, "Starting counter tasks and interrupts");
+
     evtQueue = xQueueCreate(10, sizeof(pcnt_evt_t));
     xTaskCreate(
             counter_task,      /* Function that implements the task. */
@@ -56,6 +52,18 @@ void CNTHandler::Start() {
             tskIDLE_PRIORITY + 1, /* Priority at which the task is created. */
             nullptr );        /* Used to pass out the created task's handle. */
 
+
+    m_Started = true;
+}
+
+void CNTHandler::StartUnit(pcnt_unit_t unit, int pulseGpio, int16_t pulsesPerInterrupt) {
+    ESP_LOGI(TAG, "Starting counting pulses on GPIO%d unit %d, %d ppi", pulseGpio, unit, pulsesPerInterrupt);
+
+    /* Initialize PCNT functions:
+     *  - configure and initialize PCNT
+     *  - set up the input filter
+     *  - set up the counter events to watch
+     */
 
     /* Prepare configuration for the PCNT unit */
     pcnt_config_t pcnt_config = {
@@ -70,7 +78,7 @@ void CNTHandler::Start() {
             .pos_mode = PCNT_COUNT_INC,   // Count up on the positive edge
             .neg_mode = PCNT_COUNT_DIS,   // Keep the counter value on the negative edge
             // Set the maximum and minimum limit values to watch
-            .counter_h_lim = PCNT_H_LIM_VAL,
+            .counter_h_lim = pulsesPerInterrupt,
             .counter_l_lim = PCNT_L_LIM_VAL,
 
             .unit = unit,
@@ -90,22 +98,23 @@ void CNTHandler::Start() {
     pcnt_counter_clear(unit);
 
     /* Install interrupt service and add isr callback handler */
-    pcnt_isr_service_install(0);
+    if(! m_IsrInstalled ){
+        pcnt_isr_service_install(0);
+        m_IsrInstalled = true;
+    }
+
     pcnt_isr_handler_add(unit, pcnt_intr_handler, (void *) unit);
 
     /* Everything is set up, now go to counting */
     pcnt_counter_resume(unit);
-
 }
 
-float CNTHandler::convertToHz(const pcnt_evt_t &evt) {
-    int16_t count = 0;
-    pcnt_get_counter_value(unit, &count);
-    ESP_LOGV(TAG, "Event PCNT unit[%d]; cnt: %d", evt.unit, count);
+
+float CNTHandler::convertToHz(const pcnt_evt_t &evt, int16_t pulsesPerInterrupt) {
     if (evt.status & PCNT_EVT_H_LIM) {
         // Convert to knots
-        float freqHz = 1.f / (float)evt.elapsed_us * PCNT_H_LIM_VAL * 1000000.f;
-        ESP_LOGV(TAG, "H_LIM EVT  elapsed time = %lld us f = %.3f Hz" , evt.elapsed_us, freqHz);
+        float freqHz = 1.f / (float)(evt.elapsed_us) * 1000000.f * (float)pulsesPerInterrupt;
+        ESP_LOGI(TAG, "H_LIM EVT unit=%d elapsed time=%lld us ppi=%d f=%.3fHz" ,evt.unit, evt.elapsed_us, pulsesPerInterrupt, freqHz);
         return freqHz;
     }
 
@@ -114,21 +123,35 @@ float CNTHandler::convertToHz(const pcnt_evt_t &evt) {
 
 [[noreturn]] void CNTHandler::CounterTask() {
     pcnt_evt_t evt;
+    ESP_LOGI(TAG, "Counter tasks started");
     while (true) {
         // Wait for at least 10 seconds, if nothing came then report 0
         portBASE_TYPE res = xQueueReceive(evtQueue, &evt, 10000 / portTICK_PERIOD_MS);
+
+        int unit = evt.unit;
+
         float hz = 0;
         if (res == pdTRUE) {
-            hz = convertToHz(evt);
+            hz = convertToHz(evt, m_pulsesPerInterrupt[unit]);
         }
+        m_CtrHandlers[unit]->onCounted(res == pdTRUE, hz);
+    }
 
-        // Now post the value to the central data queue
-        Event dataEvt = {
-                .src = AWS,
-                .isValid = hz > -0.5,
-                .u = {.fValue = hz}
-        };
-        xQueueSend(m_dataQueue, &dataEvt, 0);
+}
+
+bool CNTHandler::AddCounterHandler(CounterHandler *handler, int pulseGpioNum, int16_t pulsesPerInterrupt) {
+    if ( m_unitsUsed < PCNT_UNIT_MAX){
+        m_CtrHandlers[m_unitsUsed] = handler;
+        m_pulsesPerInterrupt[m_unitsUsed] = pulsesPerInterrupt;
+        if ( ! m_Started ){
+            Start();
+        }
+        StartUnit((pcnt_unit_t)m_unitsUsed, pulseGpioNum, pulsesPerInterrupt);
+        m_unitsUsed++;
+        return true;
+    }else{
+        ESP_LOGE(TAG,"No more counting units available");
+        return false;
     }
 
 }

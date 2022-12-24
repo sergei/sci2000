@@ -2,8 +2,9 @@
 #define MHU2NMEA_EVENT_HPP
 
 enum EventSource {
-    AWA
-    ,AWS
+    AWA  // Apparent wind angle
+    ,AWS // Apparent wind speed
+    ,SOW // Speed over water
     ,CAN_DRIVER_EVENT
 };
 

@@ -4,20 +4,32 @@
 
 static const char *TAG = "mhu2nmea_CalibrationStorage";
 
-void CalibrationStorage::ReadCalibration(float &awaCorrRad, float &awsFactor) {
-    int16_t awaCorr= DEFAULT_AWA_CORR, awsCorr = DEFAULT_AWS_CORR;
+void CalibrationStorage::ReadAwaCalibration(float &angleCorrRad) {
+    int16_t awaCorr= DEFAULT_ANGLE_CORR;
 
     nvs_handle_t handle = openNvs();
     if (handle){
         esp_err_t err;
         if ((err=nvs_get_i16(handle, NVS_KEY_AWA, &awaCorr)) != ESP_OK ){
-            awaCorr = DEFAULT_AWA_CORR;
+            awaCorr = DEFAULT_ANGLE_CORR;
             ESP_LOGI(TAG, "No AWA calibration found (%s) using default value %d", esp_err_to_name(err), awaCorr);
         }else{
             ESP_LOGI(TAG, "Read AWA calibration %d ", awaCorr);
         }
+        closeNvs(handle);
+    }
+
+    angleCorrRad = (float)(awaCorr) * AWA_CAL_SCALE;
+}
+
+void CalibrationStorage::ReadAwsCalibration(float &speedFactor) {
+    int16_t awsCorr = DEFAULT_SPEED_FACTOR;
+
+    nvs_handle_t handle = openNvs();
+    if (handle){
+        esp_err_t err;
         if ( (err=nvs_get_i16(handle, NVS_KEY_AWS, &awsCorr)) != ESP_OK ){
-            awsCorr = DEFAULT_AWS_CORR;
+            awsCorr = DEFAULT_SPEED_FACTOR;
             ESP_LOGI(TAG, "No AWS calibration found (%s) using default value %d", esp_err_to_name(err), awsCorr);
         }else{
             ESP_LOGI(TAG, "Read AWS calibration %d ", awsCorr);
@@ -25,26 +37,43 @@ void CalibrationStorage::ReadCalibration(float &awaCorrRad, float &awsFactor) {
         closeNvs(handle);
     }
 
-    awaCorrRad = (float)(awaCorr) * AWA_CAL_SCALE;
-    awsFactor = (float)(awsCorr) * AWS_CAL_SCALE;
+    speedFactor = (float)(awsCorr) * AWS_CAL_SCALE;
 }
 
-void CalibrationStorage::UpdateAwaCalibration(int16_t awaCorr, bool isRelative) {
+void CalibrationStorage::ReadSowCalibration(float &speedFactor) {
+    int16_t speedCorr = DEFAULT_SPEED_FACTOR;
+
+    nvs_handle_t handle = openNvs();
+    if (handle){
+        esp_err_t err;
+        if ((err=nvs_get_i16(handle, NVS_KEY_SOW, &speedCorr)) != ESP_OK ){
+            speedCorr = DEFAULT_SPEED_FACTOR;
+            ESP_LOGI(TAG, "No SOW calibration found (%s) using default value %d", esp_err_to_name(err), speedCorr);
+        }else{
+            ESP_LOGI(TAG, "Read SOW calibration %d ", speedCorr);
+        }
+        closeNvs(handle);
+    }
+
+    speedFactor = (float)(speedCorr) * SOW_CAL_SCALE;
+}
+
+void CalibrationStorage::UpdateAwaCalibration(int16_t angleCorr, bool isRelative) {
     nvs_handle_t handle = openNvs();
     if (handle) {
         int16_t currAwaCorr;
         // Read current value
         if (nvs_get_i16(handle, NVS_KEY_AWA, &currAwaCorr) != ESP_OK ){
-            currAwaCorr = DEFAULT_AWA_CORR;
+            currAwaCorr = DEFAULT_ANGLE_CORR;
         }
 
         // Update with received delta
         int16_t newAwaCorr;
         if ( isRelative ){
-            newAwaCorr = (int16_t)(currAwaCorr + awaCorr);
-            ESP_LOGI(TAG, "AWA calibration %d + %d", currAwaCorr, awaCorr);
+            newAwaCorr = (int16_t)(currAwaCorr + angleCorr);
+            ESP_LOGI(TAG, "AWA calibration %d + %d", currAwaCorr, angleCorr);
         }else{
-            newAwaCorr = awaCorr;
+            newAwaCorr = angleCorr;
         }
 
         // Store updated value
@@ -56,28 +85,54 @@ void CalibrationStorage::UpdateAwaCalibration(int16_t awaCorr, bool isRelative) 
     }
 }
 
-void CalibrationStorage::UpdateAwsCalibration(int16_t awsCorr, bool isRelative) {
+void CalibrationStorage::UpdateAwsCalibration(int16_t speedCorr, bool isRelative) {
     nvs_handle_t handle = openNvs();
     if (handle) {
-        int16_t currAwsCorr;
+        int16_t currSpeedCorr;
 
         // Read current value
-        if (nvs_get_i16(handle, NVS_KEY_AWS, &currAwsCorr) != ESP_OK ){
-            currAwsCorr = DEFAULT_AWS_CORR;
+        if (nvs_get_i16(handle, NVS_KEY_AWS, &currSpeedCorr) != ESP_OK ){
+            currSpeedCorr = DEFAULT_SPEED_FACTOR;
         }
         // Update with received delta
-        int16_t newAwsCorr;
+        int16_t newSpeedCorr;
         if ( isRelative ){
-            newAwsCorr = (int16_t)(((float)currAwsCorr * AWS_CAL_SCALE * (float)awsCorr * AWS_CAL_SCALE) / AWS_CAL_SCALE);
-            ESP_LOGI(TAG, "Relative AWS calibration %d * %d", currAwsCorr, awsCorr);
+            newSpeedCorr = (int16_t)(((float)currSpeedCorr * AWS_CAL_SCALE * (float)speedCorr * AWS_CAL_SCALE) / AWS_CAL_SCALE);
+            ESP_LOGI(TAG, "Relative AWS calibration %d * %d", currSpeedCorr, speedCorr);
         }else{
-            newAwsCorr = awsCorr;
+            newSpeedCorr = speedCorr;
         }
 
-        esp_err_t err = nvs_set_i16(handle, NVS_KEY_AWS, newAwsCorr);
-        ESP_LOGI(TAG, "AWS calibration %d Stored %s", newAwsCorr, err == ESP_OK ? "OK" : "Failed");
+        esp_err_t err = nvs_set_i16(handle, NVS_KEY_AWS, newSpeedCorr);
+        ESP_LOGI(TAG, "AWS calibration %d Stored %s", newSpeedCorr, err == ESP_OK ? "OK" : "Failed");
         err = nvs_commit(handle);
         ESP_LOGI(TAG, "AWS calibration committed %s", err == ESP_OK ? "OK" : "Failed");
+        closeNvs(handle);
+    }
+}
+
+void CalibrationStorage::UpdateSowCalibration(int16_t speedCorr, bool isRelative) {
+    nvs_handle_t handle = openNvs();
+    if (handle) {
+        int16_t currSpeedCorr;
+
+        // Read current value
+        if (nvs_get_i16(handle, NVS_KEY_SOW, &currSpeedCorr) != ESP_OK ){
+            currSpeedCorr = DEFAULT_SPEED_FACTOR;
+        }
+        // Update with received delta
+        int16_t newSpeedCorr;
+        if ( isRelative ){
+            newSpeedCorr = (int16_t)(((float)currSpeedCorr * SOW_CAL_SCALE * (float)speedCorr * SOW_CAL_SCALE) / SOW_CAL_SCALE);
+            ESP_LOGI(TAG, "Relative SOW calibration %d * %d", currSpeedCorr, speedCorr);
+        }else{
+            newSpeedCorr = speedCorr;
+        }
+
+        esp_err_t err = nvs_set_i16(handle, NVS_KEY_SOW, newSpeedCorr);
+        ESP_LOGI(TAG, "SOW calibration %d Stored %s", newSpeedCorr, err == ESP_OK ? "OK" : "Failed");
+        err = nvs_commit(handle);
+        ESP_LOGI(TAG, "SOW calibration committed %s", err == ESP_OK ? "OK" : "Failed");
         closeNvs(handle);
     }
 }

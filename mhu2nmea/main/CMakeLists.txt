@@ -3,6 +3,8 @@ idf_component_register(
         mhu2nmea_main.cpp
         N2KHandler.cpp
         AWAHandler.cpp
+        SOWHandler.cpp
+        AWSHandler.cpp
         CNTHandler.cpp
         CalibrationStorage.cpp
         ESP32N2kStream.cpp

@@ -6,12 +6,16 @@
 #include "N2KHandler.h"
 #include "CNTHandler.h"
 
-//#define HAS_ADC
+#define HAS_ADC
 #ifdef HAS_ADC
 #include "AWAHandler.h"
+#include "AWSHandler.h"
+#include "SOWHandler.h"
+
 #endif
 
-#define WIND_SPEED_PULSE_IO 35  // MHU wind speed pulse ( OPTO IN )
+#define WIND_SPEED_PULSE_IO 18
+#define WATER_SPEED_PULSE_IO 21  // MHU wind speed pulse ( 35 - OPTO IN )
 
 xQueueHandle evt_queue;   // A queue to handle  send events from sensors to N2K
 
@@ -21,18 +25,23 @@ N2KHandler N2Khandler(evt_queue);
 AWAHandler AWAhandler(evt_queue);
 #endif
 
-CNTHandler CNThandler(evt_queue, WIND_SPEED_PULSE_IO, PCNT_UNIT_0);  // Use unit 0 to count pulses on
+CNTHandler cntHandler;
+
+AWSHandler awsHandler(evt_queue);
+
+SOWHandler sowHandler(evt_queue);
 
 extern "C" [[noreturn]] void app_main(void)
 {
-    //. Initialize event queue
+    // Initialize event queue
     evt_queue = xQueueCreate(10, sizeof(Event));
 
     // Start NMEA 2000 task
     N2Khandler.StartTask();
 
-    // Start sensors tasks
-    CNThandler.Start();
+    cntHandler.AddCounterHandler(&awsHandler, WIND_SPEED_PULSE_IO, 4);
+    cntHandler.AddCounterHandler(&sowHandler, WATER_SPEED_PULSE_IO, 4);
+
 #ifdef HAS_ADC
     AWAhandler.StartTask();
 #endif

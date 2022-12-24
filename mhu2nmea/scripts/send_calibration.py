@@ -8,9 +8,12 @@ from n2k_encoder import n2k_to_can_id, can_id_to_n2k
 
 AWS_SCALE = 1000
 AWA_SCALE = 1000
+SOW_SCALE = 1000
+
+GROUP_PGN = 126208
 
 MHU_CALIBRATION_PGN = 130900
-GROUP_PGN = 126208
+SPEED_CALIBRATION_PGN = 130901
 
 SCI_MFG_CODE = 2020  # Our mfg code.
 SCI_INDUSTRY_CODE = 4  # Marine industry
@@ -61,10 +64,10 @@ class N2kMsg:
             return msgs
 
 
-class GroupFunction130900(N2kMsg):
-    def __init__(self, priority, src, dst):
+class GroupFunction(N2kMsg):
+    def __init__(self, grp_pgn, priority, src, dst):
         N2kMsg.__init__(self, priority, GROUP_PGN, src, dst)
-        self.grp_pgn = MHU_CALIBRATION_PGN
+        self.grp_pgn = grp_pgn
 
     def make_request(self):
         self.add_byte(0)                    # Field 1: Request Group Function Code = 0 (Request Message), 8 bits
@@ -103,18 +106,35 @@ class GroupFunction130900(N2kMsg):
     def reset_aws(self):
         self.make_command(5, 0xfffe)
 
+    def set_sow(self, speed_perc):
+        speed_factor = 1 + speed_perc / 100
+        self.make_command(4, int(speed_factor * SOW_SCALE))
+
+    def reset_sow(self):
+        self.make_command(4, 0xfffe)
+
 
 def calibrate(args):
 
     request_sent = False
     cal_sent = False
+
+    if args.reset_sow or args.get_sow or args.sow is not None:
+        cal_mhu = False
+    else:
+        cal_mhu = True
+
     try:
         with serial.Serial(args.port) as ser:
             while True:
                 line = ser.readline()
 
                 if not request_sent:
-                    msg = GroupFunction130900(PRIORITY, SRC, BCAST_DST)
+                    if cal_mhu:
+                        msg = GroupFunction(MHU_CALIBRATION_PGN, PRIORITY, SRC, BCAST_DST)
+                    else:
+                        msg = GroupFunction(SPEED_CALIBRATION_PGN, PRIORITY, SRC, BCAST_DST)
+
                     msg.make_request()
 
                     send_msg(msg, ser)
@@ -122,22 +142,29 @@ def calibrate(args):
 
                 parsed_msg = parse_line(line)
                 if parsed_msg is not None:
-                    if parsed_msg['pgn'] == MHU_CALIBRATION_PGN:
+                    rcvd_pgn = parsed_msg['pgn']
+                    if rcvd_pgn == MHU_CALIBRATION_PGN or rcvd_pgn == SPEED_CALIBRATION_PGN:
                         if not cal_sent:
                             dst = parsed_msg['src']  # Can not broadcast command
                             msg = None
                             if args.awa is not None:
-                                msg = GroupFunction130900(PRIORITY, SRC, dst)
+                                msg = GroupFunction(MHU_CALIBRATION_PGN, PRIORITY, SRC, dst)
                                 msg.set_awa(args.awa)
                             elif args.aws is not None:
-                                msg = GroupFunction130900(PRIORITY, SRC, dst)
+                                msg = GroupFunction(MHU_CALIBRATION_PGN, PRIORITY, SRC, dst)
                                 msg.set_aws(args.aws)
+                            elif args.sow is not None:
+                                msg = GroupFunction(SPEED_CALIBRATION_PGN, PRIORITY, SRC, dst)
+                                msg.set_sow(args.sow)
                             elif args.reset_aws:
-                                msg = GroupFunction130900(PRIORITY, SRC, dst)
+                                msg = GroupFunction(MHU_CALIBRATION_PGN, PRIORITY, SRC, dst)
                                 msg.reset_aws()
                             elif args.reset_awa:
-                                msg = GroupFunction130900(PRIORITY, SRC, dst)
+                                msg = GroupFunction(MHU_CALIBRATION_PGN, PRIORITY, SRC, dst)
                                 msg.reset_awa()
+                            elif args.reset_sow:
+                                msg = GroupFunction(SPEED_CALIBRATION_PGN, PRIORITY, SRC, dst)
+                                msg.reset_sow()
 
                             if msg is not None:
                                 send_msg(msg, ser)
@@ -170,11 +197,25 @@ def parse_mhu_cal(data_ascii):
 
     awa_cal = (data[3]) | (data[4] << 8)
     aws_cal = (data[5]) | (data[6] << 8)
-    print(f'len={dlc} awa_cal = 0x{awa_cal:04x} aws_cal=0x{aws_cal:04x}')
+    print(f'len={dlc} pi={pi} awa_cal=0x{awa_cal:04x} aws_cal=0x{aws_cal:04x}')
     awa_deg = awa_cal / AWA_SCALE * 180 / math.pi
     aws_perc = (aws_cal / AWS_SCALE - 1) * 100
     print(f'awa_deg = {awa_deg:.1f}° aws_perc={aws_perc:.1f}%')
     return awa_cal, aws_cal
+
+
+def parse_speed_cal(data_ascii):
+    print(data_ascii)
+    data = [int(x, 16) for x in data_ascii]
+    # print(data)
+    dlc = data[0]
+    pi = (data[1]) | (data[2] << 8)
+
+    sow_cal = (data[3]) | (data[4] << 8)
+    print(f'len={dlc} pi={pi} sow_cal=0x{sow_cal:04x}')
+    sow_perc = (sow_cal / SOW_SCALE - 1) * 100
+    print(f'sow_perc={sow_perc:.1f}%')
+    return sow_perc
 
 
 def parse_line(line):
@@ -195,6 +236,17 @@ def parse_line(line):
                 'awa_cal': awa_cal
             }
         }
+    elif pgn == SPEED_CALIBRATION_PGN:
+        sow_cal = parse_speed_cal(t[4:])
+        return {
+            'prio': prio,
+            'pgn': pgn,
+            'src': src,
+            'dst': dst,
+            'data': {
+                'sow_cal': sow_cal,
+            }
+        }
     return None
 
 
@@ -203,7 +255,10 @@ if __name__ == '__main__':
     cmdparser.add_argument('--port',  help="Port name of YDNU", required=True)
     cmdparser.add_argument('--awa', type=float, help="AWA calibration (degrees)")
     cmdparser.add_argument('--aws', type=float, help="AWS calibration (percent)")
+    cmdparser.add_argument('--sow', type=float, help="AWS calibration (percent)")
+    cmdparser.add_argument('--get-sow', action='store_true', help="Read SOW calibration")
     cmdparser.add_argument('--reset-aws', action='store_true', help="Reset AWS calibration")
     cmdparser.add_argument('--reset-awa', action='store_true', help="Reset AWS calibration")
+    cmdparser.add_argument('--reset-sow', action='store_true', help="Reset AWS calibration")
 
     calibrate(cmdparser.parse_args())
