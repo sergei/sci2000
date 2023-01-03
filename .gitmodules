@@ -1,6 +1,6 @@
-[submodule "mhu2nmea/components/NMEA2000_esp32"]
-	path = mhu2nmea/components/NMEA2000_esp32
-	url = git@github.com:sergei/NMEA2000_esp32.git
 [submodule "mhu2nmea/components/NMEA2000"]
 	path = mhu2nmea/components/NMEA2000
 	url = git@github.com:sergei/NMEA2000.git
+[submodule "mhu2nmea/components/NMEA2000_esp32_twai"]
+	path = mhu2nmea/components/NMEA2000_esp32_twai
+	url = git@github.com:sergei/NMEA2000_esp32_twai.git
