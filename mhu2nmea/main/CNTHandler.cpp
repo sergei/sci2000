@@ -93,6 +93,11 @@ void CNTHandler::StartUnit(pcnt_unit_t unit, int pulseGpio, int16_t pulsesPerInt
     pcnt_filter_enable(unit);
     pcnt_event_enable(unit, PCNT_EVT_H_LIM);
 
+    // Disable pull up and pull down, otherwise it interferes with Engine Top Hat clamper
+    // It's important to call it here otherwise some code up above will override this setting and
+    // set it to pull up.
+    gpio_set_pull_mode((gpio_num_t)pulseGpio, GPIO_FLOATING);
+
     /* Initialize PCNT's counter */
     pcnt_counter_pause(unit);
     pcnt_counter_clear(unit);
