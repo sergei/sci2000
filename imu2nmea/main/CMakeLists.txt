@@ -1,0 +1,9 @@
+idf_component_register(
+    SRCS
+        imu2nmea_main.cpp
+        ESP32N2kStream.cpp
+        IMUHandler.cpp
+        N2KHandler.cpp
+    INCLUDE_DIRS
+        ""
+)
