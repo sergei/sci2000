@@ -7,7 +7,6 @@ idf_component_register(
         AWSHandler.cpp
         CNTHandler.cpp
         CalibrationStorage.cpp
-        ESP32N2kStream.cpp
     INCLUDE_DIRS
         ""
 )

@@ -1,15 +1,9 @@
-[submodule "mhu2nmea/components/NMEA2000"]
-	path = mhu2nmea/components/NMEA2000
-	url = git@github.com:sergei/NMEA2000.git
-[submodule "mhu2nmea/components/NMEA2000_esp32_twai"]
-	path = mhu2nmea/components/NMEA2000_esp32_twai
-	url = git@github.com:sergei/NMEA2000_esp32_twai.git
 [submodule "mhu2nmea/components/cd"]
 	path = mhu2nmea/components/cd
 	url = git@github.com:sergei/NMEA2000_esp32_twai.git
-[submodule "imu2nmea/components/NMEA2000_esp32_twai"]
-	path = imu2nmea/components/NMEA2000_esp32_twai
-	url = git@github.com:sergei/NMEA2000_esp32_twai.git
-[submodule "imu2nmea/components/NMEA2000"]
-	path = imu2nmea/components/NMEA2000
+[submodule "idf-components/NMEA2000"]
+	path = idf-components/NMEA2000
 	url = git@github.com:sergei/NMEA2000.git
+[submodule "idf-components/NMEA2000_esp32_twai"]
+	path = idf-components/NMEA2000_esp32_twai
+	url = git@github.com:sergei/NMEA2000_esp32_twai.git
