@@ -18,9 +18,10 @@ static const char *TAG = "imu2nmea_N2KHandler";
 
 tN2kSyncScheduler N2KHandler::s_ImuScheduler(false, 200, 0);
 
-N2KHandler::N2KHandler(const xQueueHandle &evtQueue)
-    : m_evtQueue(evtQueue)
-    , m_busListener(evtQueue)
+N2KHandler::N2KHandler(const xQueueHandle &evtQueue, LEDBlinker &ledBlinker)
+    :m_evtQueue(evtQueue)
+    ,m_ledBlinker(ledBlinker)
+    ,m_busListener(evtQueue)
 {
 }
 
@@ -136,6 +137,7 @@ void N2KHandler::Start() {
             SetN2kAttitude(N2kMsg, this->uc_ImuSeqId++, localHdgRad,localPitchRad, localRollRad);
             sentOk = NMEA2000.SendMsg(N2kMsg, DEV_IMU);
             ESP_LOGD(TAG, "SetN2kMagneticHeading HDG=%.1f PITCH=%.0f ROLL=%.0f %s", RadToDeg(localHdgRad), RadToDeg(localPitchRad), RadToDeg(localRollRad), sentOk ? "OK" : "Failed");
+            m_ledBlinker.SetBusState(sentOk);
         }
 
         // crank NMEA2000 state machine

@@ -12,6 +12,7 @@
 
 #include "N2kMessages.h"
 #include "NMEA2000_esp32_twai.h"
+#include "LEDBlinker.h"
 
 class N2KTwaiBusAlertListener: public TwaiBusAlertListener{
 public:
@@ -42,7 +43,7 @@ static const int IMU_TOUT = 10 * 1000000;
 class N2KHandler {
 
 public:
-    explicit N2KHandler(const xQueueHandle &evtQueue);
+    explicit N2KHandler(const xQueueHandle &evtQueue,  LEDBlinker &ledBlinker);
     void Start();
 
     [[noreturn]] void N2KTask();
@@ -52,6 +53,7 @@ private:
     static void OnOpen();
 
     const xQueueHandle &m_evtQueue;
+    LEDBlinker &m_ledBlinker;
     N2KTwaiBusAlertListener m_busListener;
 
     unsigned char uc_ImuSeqId = 0;
