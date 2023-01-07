@@ -4,6 +4,7 @@
 
 #include "N2KHandler.h"
 #include "Event.hpp"
+#include "CalibrationStorage.h"
 
 NMEA2000_esp32_twai NMEA2000(ESP32_CAN_TX_PIN, ESP32_CAN_RX_PIN, TWAI_MODE_NORMAL);
 
@@ -93,6 +94,10 @@ void N2KHandler::Start() {
     ESP_LOGI(TAG, "Starting N2K task ");
     Init();
 
+    CalibrationStorage::ReadHeadingCalibration(m_hdgCorrRad);
+    CalibrationStorage::ReadPitchCalibration(m_pitchCorrRad);
+    CalibrationStorage::ReadRollCalibration(m_rollCorrRad);
+
     for( ;; ) {
         Event evt{};
         portBASE_TYPE res = xQueueReceive(m_evtQueue, &evt, 1);
@@ -101,9 +106,9 @@ void N2KHandler::Start() {
         if (res == pdTRUE) {
             switch (evt.src) {
                 case IMU:
-                    hdg = evt.u.imu.hdg;
-                    pitch = evt.u.imu.pitch;
-                    roll = evt.u.imu.roll;
+                    hdg = evt.u.imu.hdg + RadToDeg(m_hdgCorrRad);
+                    pitch = evt.u.imu.pitch + RadToDeg(m_pitchCorrRad);
+                    roll = evt.u.imu.roll + RadToDeg(m_rollCorrRad);
                     isImuValid = evt.isValid;
                     if( isImuValid ){
                         imuUpdateTime = esp_timer_get_time();
@@ -129,6 +134,7 @@ void N2KHandler::Start() {
 
             SetN2kMagneticHeading(N2kMsg, this->uc_ImuSeqId, localHdgRad);
             bool sentOk = NMEA2000.SendMsg(N2kMsg, DEV_IMU);
+            m_ledBlinker.SetBusState(sentOk);
             ESP_LOGD(TAG, "SetN2kMagneticHeading HDG=%.1f  %s", RadToDeg(localHdgRad), sentOk ? "OK" : "Failed");
 
             double localRollRad = isImuValid ? DegToRad(roll) : N2kDoubleNA;
@@ -172,3 +178,73 @@ void N2KTwaiBusAlertListener::onAlert(uint32_t alerts, bool isError) {
     }
 }
 
+bool N2KHandler::SendImuCalValues() {
+    // Get calibration values
+    float hdgCorrRad, rollCorrRad, pitchCorrRad;
+    CalibrationStorage::ReadHeadingCalibration(hdgCorrRad);
+    CalibrationStorage::ReadRollCalibration(rollCorrRad);
+    CalibrationStorage::ReadPitchCalibration(pitchCorrRad);
+
+    // Send PGN to requester
+    tN2kMsg N2kMsg;
+    N2kMsg.SetPGN(IMU_CALIBRATION_PGN);
+    N2kMsg.Priority=2;
+    N2kMsg.Add2ByteUInt((SCI_MFG_CODE << 5) | (0x03 << 3) | SCI_INDUSTRY_CODE);
+    N2kMsg.Add2ByteDouble(hdgCorrRad,ANGLE_CAL_SCALE);
+    N2kMsg.Add2ByteDouble(pitchCorrRad,ANGLE_CAL_SCALE);
+    N2kMsg.Add2ByteDouble(rollCorrRad,ANGLE_CAL_SCALE);
+    return NMEA2000.SendMsg(N2kMsg, DEV_IMU);
+}
+
+
+bool N2KHandler::ImuCalGroupFunctionHandler::ProcessRequest(const tN2kMsg &N2kMsg, uint32_t TransmissionInterval,
+                                                            uint16_t TransmissionIntervalOffset,
+                                                            uint8_t NumberOfParameterPairs, int Index, int iDev) {
+    ESP_LOGI(TAG, "N2KHandler::ImuCalGroupFunctionHandler::HandleRequest NumberOfParameterPairs=%d", NumberOfParameterPairs);
+    return m_n2kHandler.SendImuCalValues();
+}
+
+bool N2KHandler::ImuCalGroupFunctionHandler::ProcessCommand(const tN2kMsg &N2kMsg, uint8_t PrioritySetting,
+                                                            uint8_t NumberOfParameterPairs, int Index, int iDev) {
+
+    ESP_LOGI(TAG, "N2KHandler::ImuCalGroupFunctionHandler::HandleCommand NumberOfParameterPairs=%d", NumberOfParameterPairs);
+    int16_t value;
+    for( int i=0; i < NumberOfParameterPairs; i++){
+        uint8_t fn = N2kMsg.GetByte(Index);
+        switch (fn){
+            case 4: // Field 4: HeadingGOffset, 2 bytes 0xfffe - restore default 0xFFFF - leave unchanged
+                value = N2kMsg.Get2ByteInt(Index);
+                ESP_LOGI(TAG, "HeadingGOffset=%d", value);
+                if (value == CALIBRATION_RESTORE_DEFAULT ){ // Restore default
+                    CalibrationStorage::UpdateHeadingCalibration(DEFAULT_ANGLE_CORR, false);
+                }else{
+                    CalibrationStorage::UpdateHeadingCalibration(value, true);
+                }
+                CalibrationStorage::ReadHeadingCalibration(m_n2kHandler.m_hdgCorrRad);
+                break;
+            case 5: // Field 5: PitchOffset, 2 bytes 0xfffe - restore default 0xFFFF - leave unchanged
+                value = N2kMsg.Get2ByteInt(Index);
+                ESP_LOGI(TAG, "PitchOffset=%d", value);
+                if (value == CALIBRATION_RESTORE_DEFAULT ){ // Restore default
+                    CalibrationStorage::UpdatePitchCalibration(DEFAULT_ANGLE_CORR, false);
+                }else{
+                    CalibrationStorage::UpdatePitchCalibration(value, true);
+                }
+                CalibrationStorage::ReadPitchCalibration(m_n2kHandler.m_pitchCorrRad);
+                break;
+            case 6: // Field 6: RollOffset, 2 bytes 0xfffe - restore default 0xFFFF - leave unchanged
+                value = N2kMsg.Get2ByteInt(Index);
+                ESP_LOGI(TAG, "RollOffset=%d", value);
+                if (value == CALIBRATION_RESTORE_DEFAULT ){ // Restore default
+                    CalibrationStorage::UpdateRollCalibration(DEFAULT_ANGLE_CORR, false);
+                }else{
+                    CalibrationStorage::UpdateRollCalibration(value, true);
+                }
+                CalibrationStorage::ReadRollCalibration(m_n2kHandler.m_rollCorrRad);
+                break;
+            default:
+                break;
+        }
+    }
+    return true;
+}

@@ -4,6 +4,7 @@ idf_component_register(
         ESP32N2kStream.cpp
         IMUHandler.cpp
         N2KHandler.cpp
+        CalibrationStorage.cpp
         LEDBlinker.cpp
     INCLUDE_DIRS
         ""
