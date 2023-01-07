@@ -6,6 +6,7 @@
 #include <freertos/semphr.h>
 #include <freertos/task.h>
 #include <freertos/timers.h>
+#include <CustomPgnGroupFunctionHandler.h>
 
 #define ESP32_CAN_TX_PIN GPIO_NUM_32
 #define ESP32_CAN_RX_PIN GPIO_NUM_34
@@ -66,43 +67,12 @@ static const int SOW_TOUT = 10 * 1000000;
 
 class N2KHandler {
 
-    /// Class to handle NMEA Group function commands sent by PGN 126208  for our custom PGNs
-    /// This task check that first two fields match the manufacturer code and industry code
-    /// Then it calls child class to process the actual request or command
-    class CustomPgnGroupFunctionHandler: public tN2kGroupFunctionHandler{
-    public:
-        CustomPgnGroupFunctionHandler(tNMEA2000 *_pNMEA2000, unsigned long pgn):
-           tN2kGroupFunctionHandler(_pNMEA2000,pgn) {}
-    protected:
-        /// Network sent a request
-        /// Check if this request was sent to us
-        bool HandleRequest(const tN2kMsg &N2kMsg,
-                                   uint32_t TransmissionInterval,
-                                   uint16_t TransmissionIntervalOffset,
-                                   uint8_t  NumberOfParameterPairs,
-                                   int iDev) final;
-
-        /// Network sent a command
-        /// Check if this command was sent to us
-        bool HandleCommand(const tN2kMsg &N2kMsg, uint8_t PrioritySetting, uint8_t NumberOfParameterPairs, int iDev) final;
-
-        /// Implement this method to process the request
-        virtual bool ProcessRequest(const tN2kMsg &N2kMsg,
-                                   uint32_t TransmissionInterval,
-                                   uint16_t TransmissionIntervalOffset,
-                                   uint8_t  NumberOfParameterPairs,
-                                   int Index,
-                                   int iDev) =0;
-
-        /// Implement this method to process the command
-        virtual bool ProcessCommand(const tN2kMsg &N2kMsg, uint8_t PrioritySetting, uint8_t NumberOfParameterPairs, int Index, int iDev) = 0;
-    };
-
     /// Class to handle NMEA Group function commands sent by PGN 126208  for PGN 130900 to send/receive AWA and AWS calibration
     class MhuCalGroupFunctionHandler: public CustomPgnGroupFunctionHandler{
     public:
         MhuCalGroupFunctionHandler(N2KHandler &n2kHandler, tNMEA2000 *_pNMEA2000):
-                CustomPgnGroupFunctionHandler(_pNMEA2000,MHU_CALIBRATION_PGN), m_n2kHandler(n2kHandler) {}
+                CustomPgnGroupFunctionHandler(_pNMEA2000,MHU_CALIBRATION_PGN,
+                                              SCI_MFG_CODE, SCI_MFG_CODE), m_n2kHandler(n2kHandler) {}
     protected:
         /// Network requested calibration values
         /// We reply with PGN 130900 containing these values
@@ -123,7 +93,8 @@ class N2KHandler {
     class BoatSpeedCalGroupFunctionHandler: public CustomPgnGroupFunctionHandler{
     public:
         BoatSpeedCalGroupFunctionHandler(N2KHandler &n2kHandler, tNMEA2000 *_pNMEA2000):
-                CustomPgnGroupFunctionHandler(_pNMEA2000,SPEED_CALIBRATION_PGN), m_n2kHandler(n2kHandler) {}
+                CustomPgnGroupFunctionHandler(_pNMEA2000,SPEED_CALIBRATION_PGN,
+                                              SCI_MFG_CODE, SCI_MFG_CODE), m_n2kHandler(n2kHandler) {}
     protected:
         /// Network requested calibration values
         /// We reply with PGN 130900 containing these values

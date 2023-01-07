@@ -1,7 +1,7 @@
 #ifndef MHU2NMEA_ESP32N2KSTREAM_H
 #define MHU2NMEA_ESP32N2KSTREAM_H
 
-#include "../NMEA2000/src/N2kStream.h"
+#include "N2kStream.h"
 
 #define HEX 16
 
