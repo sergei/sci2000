@@ -13,6 +13,7 @@
 
 #include "N2kMessages.h"
 #include "NMEA2000_esp32_twai.h"
+#include "LEDBlinker.h"
 
 class N2KTwaiBusAlertListener: public TwaiBusAlertListener{
 public:
@@ -112,7 +113,7 @@ class N2KHandler {
     };
 
 public:
-    explicit N2KHandler(const xQueueHandle &evtQueue);
+    explicit N2KHandler(const xQueueHandle &evtQueue, LEDBlinker &ledBlinker);
     void StartTask();
 
     [[noreturn]] void N2KTask();
@@ -127,6 +128,7 @@ private:
     static bool SendBoatSpeedCalValues();
 
     const xQueueHandle &m_evtQueue;
+    LEDBlinker &m_ledBlinker;
     MhuCalGroupFunctionHandler m_MhuCalGroupFunctionHandler;
     BoatSpeedCalGroupFunctionHandler m_BoatSpeedCalGroupFunctionHandler;
     N2KTwaiBusAlertListener m_busListener;

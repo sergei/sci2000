@@ -7,6 +7,7 @@ idf_component_register(
         AWSHandler.cpp
         CNTHandler.cpp
         CalibrationStorage.cpp
+        LEDBlinker.cpp
     INCLUDE_DIRS
         ""
 )

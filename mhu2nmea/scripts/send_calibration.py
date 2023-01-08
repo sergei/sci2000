@@ -262,3 +262,4 @@ if __name__ == '__main__':
     cmdparser.add_argument('--reset-sow', action='store_true', help="Reset AWS calibration")
 
     calibrate(cmdparser.parse_args())
+

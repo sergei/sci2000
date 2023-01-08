@@ -11,6 +11,7 @@
 #include "AWAHandler.h"
 #include "AWSHandler.h"
 #include "SOWHandler.h"
+#include "LEDBlinker.h"
 
 #endif
 
@@ -23,22 +24,23 @@
 
 xQueueHandle evt_queue;   // A queue to handle  send events from sensors to N2K
 
-N2KHandler N2Khandler(evt_queue);
+LEDBlinker ledBlinker(GPIO_NUM_2);
+N2KHandler N2Khandler(evt_queue, ledBlinker);
 
 #ifdef HAS_ADC
 AWAHandler AWAhandler(evt_queue);
 #endif
 
 CNTHandler cntHandler;
-
 AWSHandler awsHandler(evt_queue);
-
 SOWHandler sowHandler(evt_queue);
 
 extern "C" [[noreturn]] void app_main(void)
 {
     // Initialize event queue
     evt_queue = xQueueCreate(10, sizeof(Event));
+
+    ledBlinker.Start();
 
     // Start NMEA 2000 task
     N2Khandler.StartTask();

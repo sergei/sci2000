@@ -5,6 +5,7 @@
 #include "N2KHandler.h"
 #include "Event.hpp"
 #include "CalibrationStorage.h"
+#include "LEDBlinker.h"
 
 NMEA2000_esp32_twai NMEA2000(ESP32_CAN_TX_PIN, ESP32_CAN_RX_PIN, TWAI_MODE_NORMAL);
 
@@ -28,8 +29,9 @@ static const char *TAG = "mhu2nmea_N2KHandler";
 tN2kSyncScheduler N2KHandler::s_WindScheduler(false, 1000, 500);
 tN2kSyncScheduler N2KHandler::s_WaterScheduler(false, 1000, 600);
 
-N2KHandler::N2KHandler(const xQueueHandle &evtQueue)
+N2KHandler::N2KHandler(const xQueueHandle &evtQueue, LEDBlinker &ledBlinker)
     : m_evtQueue(evtQueue)
+    , m_ledBlinker(ledBlinker)
     , m_MhuCalGroupFunctionHandler(*this, &NMEA2000)
     , m_BoatSpeedCalGroupFunctionHandler(*this, &NMEA2000)
     , m_busListener(evtQueue)
@@ -193,6 +195,8 @@ void N2KHandler::StartTask() {
             SetN2kWindSpeed(N2kMsg, this->uc_WindSeqId++, localAwsMs, localAwaRad, windRef );
             bool sentOk = NMEA2000.SendMsg(N2kMsg, DEV_MHU);
             ESP_LOGI(TAG, "SetN2kWindSpeed AWS=%.0f AWA=%.1f ref=%d %s", msToKnots(localAwsMs), RadToDeg(localAwaRad), windRef, sentOk ? "OK" : "Failed");
+            m_ledBlinker.SetBusState(sentOk);
+
         }
 
         if ( s_WaterScheduler.IsTime() ) {
@@ -203,6 +207,7 @@ void N2KHandler::StartTask() {
             SetN2kBoatSpeed(N2kMsg, this->uc_BoatSpeedSeqId++, boatSpeed, N2kDoubleNA, N2kSWRT_Paddle_wheel );
             bool sentOk = NMEA2000.SendMsg(N2kMsg, DEV_SPEED);
             ESP_LOGI(TAG, "SetN2kWindSpeed SOW=%.0f %s", msToKnots(boatSpeed), sentOk ? "OK" : "Failed");
+            m_ledBlinker.SetBusState(sentOk);
         }
 
         // crank NMEA2000 state machine
