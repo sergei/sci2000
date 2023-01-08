@@ -30,6 +30,7 @@ public class MainFragment extends Fragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mViewModel = new ViewModelProvider(this).get(MainViewModel.class);
+        mViewModel.startNmea2000(getContext());
     }
 
     @Nullable

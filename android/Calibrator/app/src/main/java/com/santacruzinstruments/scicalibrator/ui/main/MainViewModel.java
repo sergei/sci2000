@@ -1,12 +1,20 @@
 package com.santacruzinstruments.scicalibrator.ui.main;
 
+import android.content.Context;
+
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-public class MainViewModel extends ViewModel {
+import com.santacruzinstruments.scicalibrator.nmea2000.Nmea2000;
+
+public class MainViewModel extends ViewModel implements Nmea2000.N2KListener {
     MutableLiveData<Integer> twaCal = new MutableLiveData<>(0);
     MutableLiveData<String>  twa = new MutableLiveData<>("0=0+0");
+
+    public void startNmea2000(Context context) {
+        Nmea2000.Start(context, this);
+    }
 
     LiveData<Integer> getTwaCal(){
         return twaCal;
@@ -22,4 +30,12 @@ public class MainViewModel extends ViewModel {
         return twa;
     }
 
+    @Override
+    public void onTwa(double twaDeg) {
+    }
+
+    @Override
+    public void onTwaCal(double twaCalDeg) {
+
+    }
 }
