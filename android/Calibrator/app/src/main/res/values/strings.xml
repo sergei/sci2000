@@ -7,4 +7,8 @@
     <string name="hdg">HDG</string>
     <string name="pitch">Pitch</string>
     <string name="roll">ROLL</string>
+    <string name="submit">Submit</string>
+    <string name="cancel">Cancel</string>
+    <string name="cal_angle">%d</string>
+
 </resources>
