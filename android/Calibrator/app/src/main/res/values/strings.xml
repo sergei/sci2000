@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">SCI Calibrator</string>
+    <string name="calibrate">Calibrate</string>
+    <string name="twa">TWA</string>
+    <string name="tws">TWS</string>
+    <string name="spd">SPD</string>
+    <string name="hdg">HDG</string>
+    <string name="pitch">Pitch</string>
+    <string name="roll">ROLL</string>
+</resources>
