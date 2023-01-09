@@ -7,3 +7,6 @@
 [submodule "idf-components/NMEA2000_esp32_twai"]
 	path = idf-components/NMEA2000_esp32_twai
 	url = git@github.com:sergei/NMEA2000_esp32_twai.git
+[submodule "android/Calibrator/app/src/main/java/com/santacruzinstruments/scicalibrator/nmea2000/N2KLib"]
+	path = android/Calibrator/app/src/main/java/com/santacruzinstruments/scicalibrator/nmea2000/N2KLib
+	url = git@github.com:sergei/N2KLib.git
