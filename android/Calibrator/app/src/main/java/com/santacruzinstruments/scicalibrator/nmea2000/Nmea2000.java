@@ -41,8 +41,9 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
     }
 
     @Override
-    public void onDataReceived(byte[] buff, int size) {
-        Timber.d("Got %d bytes", size);
+    public void onFrameReceived(int addrPri, byte[] data) {
+        Timber.d("Got frame addr %d  len %d", addrPri, data.length);
         listener.onTwa(0);
     }
+
 }

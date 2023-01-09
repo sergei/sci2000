@@ -17,13 +17,15 @@ import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
 import com.hoho.android.usbserial.util.SerialInputOutputManager;
 import java.io.IOException;
+import java.util.Objects;
+
 import timber.log.Timber;
 
 public class TransportTask implements SerialInputOutputManager.Listener {
 
     public interface UsbConnectionListener {
         void OnConnectionStatus(boolean connected);
-        void onDataReceived(byte[]  buff, int size);
+        void onFrameReceived(int addrPri, byte[]  data);
     }
 
     private boolean bKeepRunning = true;
@@ -51,6 +53,7 @@ public class TransportTask implements SerialInputOutputManager.Listener {
 
     private final Context context;
 
+    private String rawString = "";
 
     public TransportTask(Context context, UsbConnectionListener usbConnectionListener) {
         this.context = context;
@@ -119,7 +122,7 @@ public class TransportTask implements SerialInputOutputManager.Listener {
             if ( connected == Connected.True){
                 if ( ! this.gatewayInitialized){
                     // Set gateway to 0183 mode, so it would translate from NMEA 2000 to NMEA 0183
-                    byte [] init = "YDNU MODE 0183\r\n".getBytes();
+                    byte [] init = "YDNU MODE RAW\r\n".getBytes();
                     try {
                         write(init);
                         this.gatewayInitialized = true;
@@ -223,7 +226,32 @@ public class TransportTask implements SerialInputOutputManager.Listener {
 
     @Override
     public void onNewData(byte[] data) {
-        usbConnectionListener.onDataReceived(data, data.length);
+        for( byte b: data){
+            if ( b == '\n' || b == '\r'){
+                if ( rawString.length() > 0) {
+                    processRawString(rawString);
+                    rawString = "";
+                }
+            }else{
+                rawString += (char)(b);
+            }
+        }
+
+    }
+
+    private void processRawString(String s) {
+        String [] t = s.split(" ");
+        Timber.d("Got RAW string [%s] (%d)", s, t.length);
+        if( t.length > 2) {
+            if(Objects.equals(t[1], "R")){
+                int canAddr = Integer.parseInt(t[2], 16);
+                byte [] data = new byte[t.length - 3];
+                for( int i=0; i < data.length; i++){
+                    data[i] = (byte)Integer.parseInt(t[i + 3], 16);
+                }
+                usbConnectionListener.onFrameReceived(canAddr, data);
+            }
+        }
     }
 
     @Override
