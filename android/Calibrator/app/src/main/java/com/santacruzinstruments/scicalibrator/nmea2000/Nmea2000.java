@@ -1,10 +1,19 @@
 package com.santacruzinstruments.scicalibrator.nmea2000;
 
+import static com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KMsgs.N2K.windData_pgn;
+import static com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.Utils.Utils.radstodegs;
+
 import android.content.Context;
 
+import com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KLib.N2KField;
+import com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KLib.N2KLib;
+import com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KLib.N2KPacket;
+import com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KLib.N2KTypeException;
+import com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KMsgs.N2K;
 import com.santacruzinstruments.scicalibrator.nmea2000.can.TransportTask;
 
-import timber.log.Timber;
+import java.io.InputStream;
+import java.util.Objects;
 
 public class Nmea2000 implements TransportTask.UsbConnectionListener {
 
@@ -15,7 +24,7 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
 
     private static Nmea2000 instance = null;
     private final TransportTask transportTask;
-    private final N2KListener listener;
+    private final CanFrameAssembler canFrameAssembler;
 
     public static void Start(Context context, N2KListener listener){
         if ( instance == null ) {
@@ -25,8 +34,26 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
     }
 
     private Nmea2000(Context context, N2KListener listener){
-        this.listener = listener;
         transportTask = new TransportTask(context, this);
+        InputStream is = Objects.requireNonNull(getClass().getClassLoader()).getResourceAsStream("pgns.json");
+        new N2KLib(null, is);
+        canFrameAssembler = new CanFrameAssembler((pgn, priority, dest, src, time, rawBytes, len, hdrlen) -> {
+            N2KPacket packet = new N2KPacket(pgn, priority, dest, src, time, rawBytes, len, hdrlen);
+            if (packet.pgn == windData_pgn) {
+                try {
+                    if ( packet.fields[N2K.windData.windSpeed].getAvailability() == N2KField.Availability.AVAILABLE ){
+                        double tws = packet.fields[N2K.windData.windSpeed].getDecimal();
+                    }
+                    if ( packet.fields[N2K.windData.windAngle].getAvailability() == N2KField.Availability.AVAILABLE ){
+                        double twa = radstodegs(packet.fields[N2K.windData.windAngle].getDecimal());
+                        listener.onTwa(twa);
+                    }
+                } catch (N2KTypeException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
     }
 
     private void startTransportThread() {
@@ -41,9 +68,8 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
     }
 
     @Override
-    public void onFrameReceived(int addrPri, byte[] data) {
-        Timber.d("Got frame addr %d  len %d", addrPri, data.length);
-        listener.onTwa(0);
+    public void onFrameReceived(int canAddr, byte[] data) {
+        canFrameAssembler.setFrame(canAddr, data);
     }
 
 }
