@@ -43,7 +43,7 @@ class N2kMsg:
 
     def get_msgs(self):
         can_id = n2k_to_can_id(self.priority, self.pgn, self.src, self.dst)
-        hdr = f'{can_id:08x}'
+        hdr = f'{can_id:08X}'
 
         # Check if it's single frame message or not
         dl = len(self.data)
@@ -54,7 +54,7 @@ class N2kMsg:
             msgs = []
             payload = [f'{dl:02X}'] + self.data
             n_pad = (7 - len(payload) % 7) % 7
-            payload += ['ff' for _ in range(n_pad)]
+            payload += ['FF' for _ in range(n_pad)]
             frame_no = 0x40
             for i in range(0, len(payload), 7):
                 chunk = ' '.join(payload[i:i+7])

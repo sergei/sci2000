@@ -26,6 +26,7 @@ public class TransportTask implements SerialInputOutputManager.Listener {
     public interface UsbConnectionListener {
         void OnConnectionStatus(boolean connected);
         void onFrameReceived(int addrPri, byte[]  data);
+        void onTick();
     }
 
     private boolean bKeepRunning = true;
@@ -131,7 +132,7 @@ public class TransportTask implements SerialInputOutputManager.Listener {
                     }
                 }
             }
-
+            usbConnectionListener.onTick();
             try {sleep(1000);} catch (InterruptedException ignore) {}
         }
     }
@@ -251,6 +252,25 @@ public class TransportTask implements SerialInputOutputManager.Listener {
                 }
                 usbConnectionListener.onFrameReceived(canAddr, data);
             }
+        }
+    }
+
+    static public String formatYdnuRawString(int canAddr, byte[] data){
+        String msg = String.format("%08X", canAddr);
+        for( byte b : data){
+            msg += String.format(" %02X", b);
+        }
+        msg += "\r\n";
+        return msg;
+    }
+
+    public void sendCanFrame(int canAddr, byte[] data){
+        String msg = formatYdnuRawString(canAddr, data);
+        try {
+            write(msg.getBytes());
+        } catch (IOException e) {
+            Timber.e(e, "Failed to write");
+            usbConnectionListener.OnConnectionStatus(false);
         }
     }
 

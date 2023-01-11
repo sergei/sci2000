@@ -1,5 +1,7 @@
 package com.santacruzinstruments.scicalibrator.ui.main;
 
+import static com.santacruzinstruments.scicalibrator.nmea2000.Nmea2000.getNmea2000Instance;
+
 import android.content.Context;
 
 import androidx.lifecycle.LiveData;
@@ -23,7 +25,10 @@ public class MainViewModel extends ViewModel implements Nmea2000.N2KListener {
     public void setTwaCal(int twaCal) {
         this.twaCal.postValue(twaCal);
     }
+
     public void submitTwaCal() {
+        if( twaCal.getValue() != null)
+            getNmea2000Instance().sendTwaCal(twaCal.getValue());
     }
 
     LiveData<String> getTwa(){
