@@ -36,7 +36,7 @@ static const char *const MFG_MODEL_VER = "1.0.0.0 (2022-12-07)";
 static const int CALIBRATION_RESTORE_DEFAULT = (int16_t) 0xfffe;
 static const unsigned long MHU_CALIBRATION_PGN = 130900;  // Set/get MHU calibration
 /*
-    Proprietary PGN 130900 to send/receive AWA and AWS calibration
+    Proprietary PGN 130900 the AWA and AWS calibration
     Field 1: MfgCode 11 bits
     Field 2: reserved 2 bits. Must be set all 1
     Field 3: Industry code 3 bits. Use Marine=4
@@ -47,11 +47,11 @@ static const unsigned long MHU_CALIBRATION_PGN = 130900;  // Set/get MHU calibra
 static const unsigned long SPEED_CALIBRATION_PGN = 130901;  // Set/get speed calibration
 
 /*
-    Proprietary PGN 130901 to send/receive boat speed calibration
+    Proprietary PGN 130901 the boat speed calibration
     Field 1: MfgCode 11 bits
     Field 2: reserved 2 bits. Must be set all 1
     Field 3: Industry code 3 bits. Use Marine=4
-    Field 5: SOWMultiplier, 2 bytes  0xfffe - restore default 0xFFFF - leave unchanged
+    Field 4: SOWMultiplier, 2 bytes  0xfffe - restore default 0xFFFF - leave unchanged
  */
 
 enum {

@@ -66,6 +66,7 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
                     e.printStackTrace();
                 }
             }
+
         });
 
     }
