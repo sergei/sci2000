@@ -47,7 +47,7 @@ public class MainFragment extends Fragment {
                 binding.buttonTwaCancel.setVisibility(View.GONE);
                 binding.twaCalValue.setVisibility(View.GONE);
                 ((Button)view).setText(R.string.calibrate);
-                mViewModel.submitTwaCal();
+                mViewModel.submitAwaCal();
             }else{
                 binding.seekBarTwa.setVisibility(View.VISIBLE);
                 binding.buttonTwaCancel.setVisibility(View.VISIBLE);
@@ -65,7 +65,7 @@ public class MainFragment extends Fragment {
         binding.seekBarTwa.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                mViewModel.setTwaCal(progress);
+                mViewModel.setAwaCal(progress);
             }
 
             @Override
@@ -78,9 +78,9 @@ public class MainFragment extends Fragment {
 
             }
         });
-        mViewModel.getTwaCal().observe(getViewLifecycleOwner(),
+        mViewModel.getAwaCal().observe(getViewLifecycleOwner(),
                 val -> binding.twaCalValue.setText(getString(R.string.cal_angle, val)));
-        mViewModel.getTwa().observe(getViewLifecycleOwner(),
+        mViewModel.getAwa().observe(getViewLifecycleOwner(),
                 val -> binding.twaValue.setText(val));
 
         return binding.getRoot();

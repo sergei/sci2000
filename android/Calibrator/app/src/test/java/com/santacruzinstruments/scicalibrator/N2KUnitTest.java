@@ -3,6 +3,7 @@ package com.santacruzinstruments.scicalibrator;
 import static com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KMsgs.N2K.windData_pgn;
 import static com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.Utils.Utils.radstodegs;
 import static com.santacruzinstruments.scicalibrator.nmea2000.Nmea2000.MHU_CALIBRATION_PGN;
+import static com.santacruzinstruments.scicalibrator.nmea2000.Nmea2000.makeGroupCommandPacket;
 import static com.santacruzinstruments.scicalibrator.nmea2000.Nmea2000.makeGroupRequestPacket;
 
 import org.junit.Test;
@@ -91,13 +92,13 @@ public class N2KUnitTest {
 
         List<byte[]> frames = canFrameAssembler.makeCanFrames(p);
 
-        String [] expected = {
+        String [] expectedReq = {
                 "09EDFF00 40 10 00 54 FF 01 FF FF\r\n",
                 "09EDFF00 41 FF FF FF FF 02 01 E4\r\n",
                 "09EDFF00 42 07 03 04 FF FF FF FF\r\n"
         };
 
-        assertEquals(expected.length, frames.size());
+        assertEquals(expectedReq.length, frames.size());
 
         List<String> generated = new LinkedList<>();
         for( byte[] data : frames){
@@ -105,8 +106,32 @@ public class N2KUnitTest {
             generated.add(msg);
         }
 
-        for( int i = 0; i < expected.length; i++){
-            assertEquals(expected[i], generated.get(i));
+        for( int i = 0; i < expectedReq.length; i++){
+            assertEquals(expectedReq[i], generated.get(i));
+        }
+
+        int [] params = {0xFFFE, 2};
+        p = makeGroupCommandPacket(MHU_CALIBRATION_PGN, (byte)3, params);
+        String [] expectedCmd = {
+                "09ED0300 40 16 00 54 FF 01 FF FF\r\n",
+                "09ED0300 41 FF FF FF FF 04 01 E4\r\n",
+                "09ED0300 42 07 03 04 04 FE FF 05\r\n",
+                "09ED0300 43 02 00 FF FF FF FF FF\r\n"
+        };
+
+        assertNotNull(p);
+
+        frames = canFrameAssembler.makeCanFrames(p);
+        assertEquals(expectedCmd.length, frames.size());
+
+        generated = new LinkedList<>();
+        for( byte[] data : frames){
+            String msg = TransportTask.formatYdnuRawString(canFrameAssembler.getCanAddr(), data);
+            generated.add(msg);
+        }
+
+        for( int i = 0; i < expectedCmd.length; i++){
+            assertEquals(expectedCmd[i], generated.get(i));
         }
 
     }

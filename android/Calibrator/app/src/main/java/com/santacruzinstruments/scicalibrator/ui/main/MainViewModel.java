@@ -10,37 +10,51 @@ import androidx.lifecycle.ViewModel;
 
 import com.santacruzinstruments.scicalibrator.nmea2000.Nmea2000;
 
+import java.util.Locale;
+
 public class MainViewModel extends ViewModel implements Nmea2000.N2KListener {
-    MutableLiveData<Integer> twaCal = new MutableLiveData<>(0);
-    MutableLiveData<String>  twa = new MutableLiveData<>("0=0+0");
+    private static final String INVALID_VALUE = "...";
+    MutableLiveData<Integer> awaCal = new MutableLiveData<>(0);
+    MutableLiveData<String> awa = new MutableLiveData<>(INVALID_VALUE);
+    private boolean gotAwaCal = false;
+    private double currAwaCalDeg=0;
 
     public void startNmea2000(Context context) {
         Nmea2000.Start(context, this);
     }
 
-    LiveData<Integer> getTwaCal(){
-        return twaCal;
+    LiveData<Integer> getAwaCal(){
+        return awaCal;
     }
 
-    public void setTwaCal(int twaCal) {
-        this.twaCal.postValue(twaCal);
+    public void setAwaCal(int awaCal) {
+        this.awaCal.postValue(awaCal);
     }
 
-    public void submitTwaCal() {
-        if( twaCal.getValue() != null)
-            getNmea2000Instance().sendTwaCal(twaCal.getValue());
+    public void submitAwaCal() {
+        if( awaCal.getValue() != null) {
+            getNmea2000Instance().sendAwaCal(awaCal.getValue());
+            gotAwaCal = false;
+        }
     }
 
-    LiveData<String> getTwa(){
-        return twa;
+    LiveData<String> getAwa(){
+        return awa;
     }
 
     @Override
-    public void onTwa(double twaDeg) {
+    public void onRcvdAwa(double twaDeg) {
+        double nonCalVal = twaDeg - currAwaCalDeg;
+        if ( gotAwaCal ){
+            this.awa.postValue(String.format(Locale.getDefault(), "%.1f = %.1f + %.1f", twaDeg, nonCalVal, currAwaCalDeg));
+        }else{
+            this.awa.postValue(INVALID_VALUE);
+        }
     }
 
     @Override
-    public void onTwaCal(double twaCalDeg) {
-
+    public void onCurrAwaCal(double twaCalDeg) {
+        currAwaCalDeg = twaCalDeg;
+        gotAwaCal = true;
     }
 }
