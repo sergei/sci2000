@@ -23,6 +23,7 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
     public interface N2KListener {
         void onRcvdAwa(double twaDeg);
         void onCurrAwaCal(double twaCalDeg);
+        void OnConnectionStatus(boolean connected);
     }
 
     private static Nmea2000 instance = null;
@@ -30,9 +31,10 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
     private final CanFrameAssembler canFrameAssembler;
     private final N2KListener listener;
     boolean calRequested = false;
-    public static int MHU_CALIBRATION_PGN = 130900;  // MHU calibration
-    private static int SPEED_CALIBRATION_PGN = 130901;  // MHU calibration
-    private byte windCalDest =0;
+    public static final int MHU_CALIBRATION_PGN = 130900;  // MHU calibration
+    private static final int SPEED_CALIBRATION_PGN = 130901;  // MHU calibration
+
+    private byte windCalDest = 0;  // Address of device where to send wind calibration
 
     public static int SCI_MFG_CODE = 2020;  // # Our mfg code.
     public static int SCI_INDUSTRY_CODE = 4;  // Marine industry
@@ -105,7 +107,7 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
 
     @Override
     public void OnConnectionStatus(boolean connected) {
-
+        listener.OnConnectionStatus(connected);
     }
 
     @Override

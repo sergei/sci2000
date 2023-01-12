@@ -16,6 +16,9 @@ public class MainViewModel extends ViewModel implements Nmea2000.N2KListener {
     private static final String INVALID_VALUE = "...";
     MutableLiveData<Integer> awaCal = new MutableLiveData<>(0);
     MutableLiveData<String> awa = new MutableLiveData<>(INVALID_VALUE);
+
+    MutableLiveData<Boolean> isConnected = new MutableLiveData<>();
+
     private boolean gotAwaCal = false;
     private double currAwaCalDeg=0;
 
@@ -57,4 +60,15 @@ public class MainViewModel extends ViewModel implements Nmea2000.N2KListener {
         currAwaCalDeg = twaCalDeg;
         gotAwaCal = true;
     }
+
+    @Override
+    public void OnConnectionStatus(boolean connected) {
+        isConnected.postValue(connected);
+    }
+
+    public LiveData<Boolean> getIsConnected() {
+        return isConnected;
+    }
+
+
 }

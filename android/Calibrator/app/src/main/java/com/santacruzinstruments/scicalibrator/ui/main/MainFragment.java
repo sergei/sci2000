@@ -78,6 +78,17 @@ public class MainFragment extends Fragment {
 
             }
         });
+
+        mViewModel.getIsConnected().observe(getViewLifecycleOwner(), isConnected -> {
+            if ( isConnected ){
+                binding.notConnectedIndicator.setVisibility(View.GONE);
+                binding.main.setVisibility(View.VISIBLE);
+            }else{
+                binding.notConnectedIndicator.setVisibility(View.VISIBLE);
+                binding.main.setVisibility(View.GONE);
+            }
+        });
+
         mViewModel.getAwaCal().observe(getViewLifecycleOwner(),
                 val -> binding.twaCalValue.setText(getString(R.string.cal_angle, val)));
         mViewModel.getAwa().observe(getViewLifecycleOwner(),
