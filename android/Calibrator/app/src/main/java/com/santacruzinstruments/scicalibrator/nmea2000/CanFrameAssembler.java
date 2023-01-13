@@ -1,10 +1,16 @@
 package com.santacruzinstruments.scicalibrator.nmea2000;
 
+import com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KDefs.PGNInfo;
+import com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KLib.N2KLib;
 import com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KLib.N2KPacket;
+import com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KLib.N2KPacketDef;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+
+import timber.log.Timber;
 
 public class CanFrameAssembler {
 
@@ -31,10 +37,11 @@ public class CanFrameAssembler {
             frames.add(Arrays.copyOfRange(rawData,0, dl));
         }else{
             int n_pad = 7 - ((dl + 1) % 7) % 7;
-            for( int i = dl; i < dl+n_pad; i++)
-                rawData[i] = (byte) 0xFF;
             int len = (dl + 1) + n_pad;
             int nframes = len / 7;
+
+            for( int i = dl; i < dl+n_pad; i++)
+                rawData[i] = (byte) 0xFF;
             byte seq = (byte) 0x40;
             int rawDataIdx = 0;
             for(int fr = 0; fr < nframes; fr++){
@@ -64,8 +71,19 @@ public class CanFrameAssembler {
     private final N2kListener listener;
     public CanFrameAssembler(N2kListener listener){
         this.listener = listener;
-
     }
+
+    private static class FastFrames {
+        int frameCount = 0 ;
+        int len = 0;
+        int size = 0;
+        int totalFramesNum = 0;
+        int seqId = 0;
+        final byte [] data = new byte[256];
+    }
+
+    private final HashMap<Byte, FastFrames> fastFramesMap = new HashMap<>();
+
     public void setFrame(int can_id, byte[] data){
         int can_id_pf = (can_id >> 16) & 0x00FF;
         byte can_id_ps = (byte) ((can_id >> 8) & 0x00FF);
@@ -88,8 +106,42 @@ public class CanFrameAssembler {
             pgn = (can_id_dp << 16) | (can_id_pf << 8) |can_id_ps;
         }
 
-        this.listener.onN2kPacket(pgn, priority, dst, src, 0, data, data.length,0);
+        List<N2KPacketDef> packetDefs = N2KLib.pgnDefs.get(pgn);
+        N2KPacketDef pd = packetDefs.get(0);  // Grab the firts, since all of them should have the same type
+        PGNInfo.PGNType pgnType = pd.pgnInfo.Type;
+
+        if ( pgnType == PGNInfo.PGNType.Single ){
+            this.listener.onN2kPacket(pgn, priority, dst, src, 0, data, data.length,0);
+        }if ( pgnType == PGNInfo.PGNType.Fast ){
+            int seqId = data[0] & 0xE0;
+            int seqNum = data[0] & 0x1F;
+            if( seqNum == 0 ){
+                FastFrames f = new FastFrames();
+                f.size = (int)data[1] & 0x00FF;
+                f.seqId = seqId;
+                int n_pad = (7 - ((f.size + 1) % 7) % 7) % 7;
+                int len = (f.size + 1) + n_pad;
+                f.totalFramesNum = len / 7;
+                fastFramesMap.put(src, f);
+                System.arraycopy(data, 2, f.data, 0, data.length - 2);
+                f.len = data.length - 2;
+                f.frameCount = 1;
+            }else{
+                final FastFrames f = fastFramesMap.get(src);
+                if( f != null && f.seqId == seqId && f.frameCount == seqNum) { // Check if we got sequence right
+                    System.arraycopy(data, 1, f.data, f.len, data.length - 1);
+                    f.len += data.length - 1;
+                    f.frameCount ++;
+                }else{
+                    Timber.d("Ignoring orphan frame");
+                    fastFramesMap.remove(src);
+                }
+            }
+
+            final FastFrames f = fastFramesMap.get(src);
+            if( f != null && f.frameCount ==  f.totalFramesNum){
+                this.listener.onN2kPacket(pgn, priority, dst, src, 0, f.data, f.size,0);
+            }
+        }
     }
-
-
 }

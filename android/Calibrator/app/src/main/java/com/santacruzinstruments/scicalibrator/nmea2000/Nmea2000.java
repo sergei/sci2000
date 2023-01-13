@@ -31,6 +31,8 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
     private final CanFrameAssembler canFrameAssembler;
     private final N2KListener listener;
     boolean calRequested = false;
+    private boolean isConnected = false;
+
     public static final int MHU_CALIBRATION_PGN = 130900;  // MHU calibration
     private static final int SPEED_CALIBRATION_PGN = 130901;  // MHU calibration
 
@@ -107,6 +109,7 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
 
     @Override
     public void OnConnectionStatus(boolean connected) {
+        this.isConnected = connected;
         listener.OnConnectionStatus(connected);
     }
 
@@ -117,9 +120,11 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
 
     @Override
     public void onTick() {
-        if( ! calRequested ){
-            requestCurrentCal(MHU_CALIBRATION_PGN);
-            requestCurrentCal(SPEED_CALIBRATION_PGN);
+        if ( this.isConnected ){
+            if( ! calRequested ){
+                requestCurrentCal(MHU_CALIBRATION_PGN);
+                requestCurrentCal(SPEED_CALIBRATION_PGN);
+            }
         }
     }
 

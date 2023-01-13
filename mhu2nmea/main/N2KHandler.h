@@ -73,7 +73,7 @@ class N2KHandler {
     public:
         MhuCalGroupFunctionHandler(N2KHandler &n2kHandler, tNMEA2000 *_pNMEA2000):
                 CustomPgnGroupFunctionHandler(_pNMEA2000,MHU_CALIBRATION_PGN,
-                                              SCI_MFG_CODE, SCI_MFG_CODE), m_n2kHandler(n2kHandler) {}
+                                              SCI_MFG_CODE, SCI_INDUSTRY_CODE), m_n2kHandler(n2kHandler) {}
     protected:
         /// Network requested calibration values
         /// We reply with PGN 130900 containing these values
@@ -95,7 +95,7 @@ class N2KHandler {
     public:
         BoatSpeedCalGroupFunctionHandler(N2KHandler &n2kHandler, tNMEA2000 *_pNMEA2000):
                 CustomPgnGroupFunctionHandler(_pNMEA2000,SPEED_CALIBRATION_PGN,
-                                              SCI_MFG_CODE, SCI_MFG_CODE), m_n2kHandler(n2kHandler) {}
+                                              SCI_MFG_CODE, SCI_INDUSTRY_CODE), m_n2kHandler(n2kHandler) {}
     protected:
         /// Network requested calibration values
         /// We reply with PGN 130900 containing these values

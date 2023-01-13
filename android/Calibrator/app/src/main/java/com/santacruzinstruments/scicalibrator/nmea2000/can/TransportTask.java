@@ -243,14 +243,18 @@ public class TransportTask implements SerialInputOutputManager.Listener {
     private void processRawString(String s) {
         String [] t = s.split(" ");
         Timber.d("Got RAW string [%s] (%d)", s, t.length);
-        if( t.length > 2) {
+        if( t.length > 2 && t.length <= 11) {
             if(Objects.equals(t[1], "R")){
-                int canAddr = Integer.parseInt(t[2], 16);
-                byte [] data = new byte[t.length - 3];
-                for( int i=0; i < data.length; i++){
-                    data[i] = (byte)Integer.parseInt(t[i + 3], 16);
+                try {
+                    int canAddr = Integer.parseInt(t[2], 16);
+                    byte [] data = new byte[t.length - 3];
+                    for( int i=0; i < data.length; i++){
+                        data[i] = (byte)Integer.parseInt(t[i + 3], 16);
+                    }
+                    usbConnectionListener.onFrameReceived(canAddr, data);
+                }catch (NumberFormatException e){
+                    Timber.w("Malformed raw string");
                 }
-                usbConnectionListener.onFrameReceived(canAddr, data);
             }
         }
     }

@@ -40164,7 +40164,7 @@
         "PGN":130900,
         "Id":"windCal",
         "Description":"AWS and AWA calibration",
-        "Type":"Single",
+        "Type":"Fast",
         "Complete":true,
         "Length":6,
         "Fields":[
@@ -40176,7 +40176,6 @@
             "BitLength":11,
             "BitOffset":0,
             "BitStart":0,
-            "Match":2020,
             "Type":"Manufacturer code",
             "Resolution":1,
             "Signed":false,
@@ -40199,7 +40198,6 @@
             "BitLength":3,
             "BitOffset":13,
             "BitStart":5,
-            "Match":4,
             "Type":"Lookup table",
             "Resolution":1,
             "Signed":false,
@@ -40235,7 +40233,7 @@
         "PGN":130901,
         "Id":"waterCal",
         "Description":"Paddle wheel calibration",
-        "Type":"Single",
+        "Type":"Fast",
         "Complete":true,
         "Length":4,
         "Fields":[
@@ -40294,7 +40292,7 @@
         "PGN":130902,
         "Id":"imuCal",
         "Description":"IMU calibration",
-        "Type":"Single",
+        "Type":"Fast",
         "Complete":true,
         "Length":8,
         "Fields":[
