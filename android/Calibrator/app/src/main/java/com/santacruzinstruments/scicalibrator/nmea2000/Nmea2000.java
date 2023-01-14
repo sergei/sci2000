@@ -8,6 +8,7 @@ import static com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.Utils.Utils
 import android.content.Context;
 
 import com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KLib.N2KField;
+import com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KLib.N2KFieldDef;
 import com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KLib.N2KLib;
 import com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KLib.N2KPacket;
 import com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KLib.N2KTypeException;
@@ -17,6 +18,8 @@ import com.santacruzinstruments.scicalibrator.nmea2000.can.TransportTask;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Objects;
+
+import timber.log.Timber;
 
 public class Nmea2000 implements TransportTask.UsbConnectionListener {
 
@@ -30,7 +33,7 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
     private final TransportTask transportTask;
     private final CanFrameAssembler canFrameAssembler;
     private final N2KListener listener;
-    boolean calRequested = false;
+    boolean windCalReceived = false;
     private boolean isConnected = false;
 
     public static final int MHU_CALIBRATION_PGN = 130900;  // MHU calibration
@@ -60,13 +63,14 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
         new N2KLib(null, is);
         canFrameAssembler = new CanFrameAssembler((pgn, priority, dest, src, time, rawBytes, len, hdrlen) -> {
             N2KPacket packet = new N2KPacket(pgn, priority, dest, src, time, rawBytes, len, hdrlen);
-            try {
-                processIncomingPacket(packet);
-            } catch (N2KTypeException e) {
-                e.printStackTrace();
+            if ( packet.isValid() ){
+                try {
+                    processIncomingPacket(packet);
+                } catch (N2KTypeException e) {
+                    Timber.e(e,"Failed to parse packet");
+                }
             }
         });
-
     }
 
     private void processIncomingPacket(N2KPacket packet) throws N2KTypeException {
@@ -81,6 +85,8 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
                 }
                 break;
             case SciWindCalibration_pgn:
+                Timber.d("Received wind calibration %s", packet.toString());
+                windCalReceived = true;
                 this.windCalDest = packet.src;
                 if ( packet.fields[N2K.SciWindCalibration.AWSMultiplier].getAvailability() == N2KField.Availability.AVAILABLE ){
                     double awsCal = radstodegs(packet.fields[N2K.SciWindCalibration.AWSMultiplier].getDecimal());
@@ -121,23 +127,25 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
     @Override
     public void onTick() {
         if ( this.isConnected ){
-            if( ! calRequested ){
+            if( !windCalReceived){
+                Timber.d("Requesting wind calibration");
                 requestCurrentCal(MHU_CALIBRATION_PGN);
-                requestCurrentCal(SPEED_CALIBRATION_PGN);
             }
+//            requestCurrentCal(SPEED_CALIBRATION_PGN);
         }
     }
 
     public void sendAwaCal(int twaCal) {
-        int [] params = {twaCal, 0xFFFF};
-        N2KPacket p = makeGroupCommandPacket(MHU_CALIBRATION_PGN, this.windCalDest, params);
+        N2KPacket p = makeGroupCommandPacket(MHU_CALIBRATION_PGN, this.windCalDest, 4, twaCal);
 
         if ( p != null) {
             sendPacket(p);
         }
+        windCalReceived = false;
     }
 
     private void sendPacket(N2KPacket p) {
+        Timber.d("Sending %s", p.toString());
         List<byte[]> frames = canFrameAssembler.makeCanFrames(p);
         for(byte[] data: frames){
             transportTask.sendCanFrame(canFrameAssembler.getCanAddr(), data);
@@ -145,13 +153,13 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
     }
 
     static public N2KPacket makeGroupRequestPacket(int commandedPgn) {
-        int[] request = {0};
-        N2KPacket p = new N2KPacket(nmeaRequestGroupFunction_pgn, request);
+        int[] functionCode = {0};  // Request
+        N2KPacket p = new N2KPacket(nmeaRequestGroupFunction_pgn, functionCode);
         p.dest = (byte) 255; // Broadcast
         p.priority = 2;
         p.src = 0;
         try {
-            p.fields[N2K.nmeaRequestGroupFunction.functionCode].setInt(0);
+            p.fields[N2K.nmeaRequestGroupFunction.functionCode].setInt(functionCode[0]);
             p.fields[N2K.nmeaRequestGroupFunction.pgn].setInt(commandedPgn);
             p.fields[N2K.nmeaRequestGroupFunction.transmissionInterval].setInt(0xFFFFFFFF);
             p.fields[N2K.nmeaRequestGroupFunction.transmissionIntervalOffset].setInt(0xFFFF);
@@ -171,18 +179,20 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
         }
     }
 
-    static public N2KPacket makeGroupCommandPacket(int commandedPgn, byte dest, int [] values) {
-        int[] cmd = {0};
-        N2KPacket p = new N2KPacket(nmeaRequestGroupFunction_pgn, cmd);
+    static public N2KPacket makeGroupCommandPacket(int commandedPgn, byte dest, int fieldNo, double value) {
+        int[] functionCode = {1};  // Command
+        N2KPacket p = new N2KPacket(nmeaRequestGroupFunction_pgn, functionCode);
         p.dest = dest;
         p.priority = 2;
         p.src = 0;
         try {
-            p.fields[N2K.nmeaRequestGroupFunction.functionCode].setInt(0);
+            p.fields[N2K.nmeaRequestGroupFunction.functionCode].setInt(functionCode[0]);
             p.fields[N2K.nmeaRequestGroupFunction.pgn].setInt(commandedPgn);
             p.fields[N2K.nmeaRequestGroupFunction.transmissionInterval].setInt(0xFFFFFFFF);
             p.fields[N2K.nmeaRequestGroupFunction.transmissionIntervalOffset].setInt(0xFFFF);
-            p.fields[N2K.nmeaRequestGroupFunction.OfParameters].setInt(2 + values.length);
+            p.fields[N2K.nmeaRequestGroupFunction.OfParameters].setInt(2 + 1);  // Always set only one parameter
+
+            //
             N2KField[] repset = p.addRepSet();
             repset[N2K.nmeaRequestGroupFunction.rep.parameter].setInt(1);
             repset[N2K.nmeaRequestGroupFunction.rep.value].setBitLength(16);
@@ -192,11 +202,17 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
             repset[N2K.nmeaRequestGroupFunction.rep.value].setBitLength(8);
             repset[N2K.nmeaRequestGroupFunction.rep.value].setInt(SCI_INDUSTRY_CODE);
 
-            for( int i = 0; i < values.length; i++){
-                repset = p.addRepSet();
-                repset[N2K.nmeaRequestGroupFunction.rep.parameter].setInt(4 + i);
-                repset[N2K.nmeaRequestGroupFunction.rep.value].setBitLength(16);
-                repset[N2K.nmeaRequestGroupFunction.rep.value].setInt(values[i]);
+            // Set parameter of interest
+            repset = p.addRepSet();
+            // Parameter field number
+            repset[N2K.nmeaRequestGroupFunction.rep.parameter].setInt(fieldNo);
+            // We need to know type and resolution of the field we are setting
+            // Get the commanded PGN definition
+            N2KPacket cmdPgn = new N2KPacket(commandedPgn);
+            if ( cmdPgn.fields != null && fieldNo < cmdPgn.fields.length ){
+                final N2KField valueField = repset[N2K.nmeaRequestGroupFunction.rep.value];
+                valueField.fieldDef = cmdPgn.fields[fieldNo-1].fieldDef;  // Replace field definition with one from the commanded PGN
+                valueField.setDecimal(value);
             }
 
             return p;

@@ -142,6 +142,7 @@ def calibrate(args):
 
                 parsed_msg = parse_line(line)
                 if parsed_msg is not None:
+                    print(line)
                     rcvd_pgn = parsed_msg['pgn']
                     if rcvd_pgn == MHU_CALIBRATION_PGN or rcvd_pgn == SPEED_CALIBRATION_PGN:
                         if not cal_sent:

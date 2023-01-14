@@ -26,6 +26,8 @@ private:
 
 static const int SCI_MFG_CODE = 2020;    // Our mfg code.
 static const int SCI_INDUSTRY_CODE = 4;  // Marine industry
+static const uint16_t SCI_IND_MFG_CODE = (SCI_INDUSTRY_CODE << 13) | (0x03 << 11) | SCI_MFG_CODE;
+
 static const int MHU_PR_CODE = 130;
 static const char *const MHU_MODEL_ID = "SCI MHU->N2K";
 static const int SPEED_PR_CODE = 131;
@@ -33,15 +35,14 @@ static const char *const SPEED_MODEL_ID = "SCI Speed->N2K";
 static const char *const MFG_SW_VERSION = "1.0.0.0 (2022-12-07)";
 static const char *const MFG_MODEL_VER = "1.0.0.0 (2022-12-07)";
 
-static const int CALIBRATION_RESTORE_DEFAULT = (int16_t) 0xfffe;
 static const unsigned long MHU_CALIBRATION_PGN = 130900;  // Set/get MHU calibration
 /*
     Proprietary PGN 130900 the AWA and AWS calibration
     Field 1: MfgCode 11 bits
     Field 2: reserved 2 bits. Must be set all 1
     Field 3: Industry code 3 bits. Use Marine=4
-    Field 4: AWAOffset, 2 bytes 0xfffe - restore default 0xFFFF - leave unchanged
-    Field 5: AWSMultiplier, 2 bytes  0xfffe - restore default 0xFFFF - leave unchanged
+    Field 4: AWAOffset, 2 bytes Degrees
+    Field 5: AWSMultiplier, 2 bytes  Percent
  */
 
 static const unsigned long SPEED_CALIBRATION_PGN = 130901;  // Set/get speed calibration
@@ -51,7 +52,7 @@ static const unsigned long SPEED_CALIBRATION_PGN = 130901;  // Set/get speed cal
     Field 1: MfgCode 11 bits
     Field 2: reserved 2 bits. Must be set all 1
     Field 3: Industry code 3 bits. Use Marine=4
-    Field 4: SOWMultiplier, 2 bytes  0xfffe - restore default 0xFFFF - leave unchanged
+    Field 4: SOWMultiplier, 2 bytes  Percent
  */
 
 enum {
@@ -65,6 +66,8 @@ enum {
 static const int AWS_TOUT = 10 * 1000000;
 static const int AWA_TOUT = 10 * 1000000;
 static const int SOW_TOUT = 10 * 1000000;
+
+static const int DEFAULT_MSG_TRANSMIT_PERIOD = 100;
 
 class N2KHandler {
 

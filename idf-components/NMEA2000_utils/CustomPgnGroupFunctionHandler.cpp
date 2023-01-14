@@ -46,7 +46,7 @@ bool CustomPgnGroupFunctionHandler::HandleRequest(const tN2kMsg &N2kMsg, uint32_
     if ( mfgCode == m_mfgCode && indCode == m_indCode) {
         return ProcessRequest(N2kMsg, TransmissionInterval, TransmissionIntervalOffset, NumberOfParameterPairs-2, Index, iDev);
     }else{
-        ESP_LOGE(TAG, "Ignore request with mfgCode=%d indCode=%d", mfgCode, indCode);
+        ESP_LOGE(TAG, "Ignore request with mfgCode=%d indCode=%d expected %d %d ", mfgCode, indCode, m_mfgCode, m_indCode);
         return false;
     }
 }

@@ -26,8 +26,8 @@ static const unsigned long RX_PGNS_SPEED[] PROGMEM={
 
 static const char *TAG = "mhu2nmea_N2KHandler";
 
-tN2kSyncScheduler N2KHandler::s_WindScheduler(false, 1000, 500);
-tN2kSyncScheduler N2KHandler::s_WaterScheduler(false, 1000, 600);
+tN2kSyncScheduler N2KHandler::s_WindScheduler(false, DEFAULT_MSG_TRANSMIT_PERIOD, 500);
+tN2kSyncScheduler N2KHandler::s_WaterScheduler(false, DEFAULT_MSG_TRANSMIT_PERIOD, 600);
 
 N2KHandler::N2KHandler(const xQueueHandle &evtQueue, LEDBlinker &ledBlinker)
     : m_evtQueue(evtQueue)
@@ -255,9 +255,9 @@ bool N2KHandler::SendMhuCalValues() {
     tN2kMsg N2kMsg;
     N2kMsg.SetPGN(MHU_CALIBRATION_PGN);
     N2kMsg.Priority=2;
-    N2kMsg.Add2ByteUInt((SCI_MFG_CODE << 5) | (0x03 << 3) | SCI_INDUSTRY_CODE);
-    N2kMsg.Add2ByteDouble(awaCorrRad,AWA_CAL_SCALE);
-    N2kMsg.Add2ByteDouble(awsFactor,AWS_CAL_SCALE);
+    N2kMsg.Add2ByteUInt(SCI_IND_MFG_CODE);
+    N2kMsg.Add2ByteDouble(RadToDeg(awaCorrRad), AWA_CAL_SCALE);
+    N2kMsg.Add2ByteDouble((awsFactor - 1) * 100,AWS_CAL_SCALE);
     return NMEA2000.SendMsg(N2kMsg, DEV_MHU);
 }
 
@@ -271,8 +271,8 @@ bool N2KHandler::SendBoatSpeedCalValues() {
     tN2kMsg N2kMsg;
     N2kMsg.SetPGN(SPEED_CALIBRATION_PGN);
     N2kMsg.Priority=2;
-    N2kMsg.Add2ByteUInt((SCI_MFG_CODE << 5) | (0x03 << 3) | SCI_INDUSTRY_CODE);
-    N2kMsg.Add2ByteDouble(speedFactor, SOW_CAL_SCALE);
+    N2kMsg.Add2ByteUInt(SCI_IND_MFG_CODE);
+    N2kMsg.Add2ByteDouble((speedFactor - 1) * 100, SOW_CAL_SCALE);
     return NMEA2000.SendMsg(N2kMsg, DEV_SPEED);
 }
 
@@ -301,21 +301,13 @@ bool N2KHandler::MhuCalGroupFunctionHandler::ProcessCommand(const tN2kMsg &N2kMs
             case 4: // Field 4: AWAOffset, 2 bytes
                 value = N2kMsg.Get2ByteInt(Index);
                 ESP_LOGI(TAG, "AWAOffset=%d", value);
-                if (value == CALIBRATION_RESTORE_DEFAULT ){ // Restore default
-                    CalibrationStorage::UpdateAwaCalibration(DEFAULT_ANGLE_CORR, false);
-                }else{
-                    CalibrationStorage::UpdateAwaCalibration(value, true);
-                }
+                CalibrationStorage::StoreAwaCalibration(value);
                 CalibrationStorage::ReadAwaCalibration(m_n2kHandler.m_awaCorrRad);
                 break;
             case 5: // Field 5: AWSMultiplier, 2 bytes
                 value = N2kMsg.Get2ByteInt(Index);
                 ESP_LOGI(TAG, "AWSMultiplier=%d", value);
-                if (value == CALIBRATION_RESTORE_DEFAULT ){ // Restore default
-                    CalibrationStorage::UpdateAwsCalibration(DEFAULT_SPEED_FACTOR, false);
-                }else{
-                    CalibrationStorage::UpdateAwsCalibration(value, true);
-                }
+                CalibrationStorage::StoreAwsCalibration(value);
                 CalibrationStorage::ReadAwsCalibration(m_n2kHandler.m_awsFactor);
                 break;
             default:
@@ -336,11 +328,7 @@ bool N2KHandler::BoatSpeedCalGroupFunctionHandler::ProcessCommand(const tN2kMsg 
             case 4: // Field 4: SOWMultiplier, 2 bytes
                 value = N2kMsg.Get2ByteInt(Index);
                 ESP_LOGI(TAG, "SOWMultiplier=%d", value);
-                if (value == CALIBRATION_RESTORE_DEFAULT ){ // Restore default
-                    CalibrationStorage::UpdateSowCalibration(DEFAULT_SPEED_FACTOR, false);
-                }else{
-                    CalibrationStorage::UpdateSowCalibration(value, true);
-                }
+                CalibrationStorage::StoreSowCalibration(value);
                 CalibrationStorage::ReadSowCalibration(m_n2kHandler.m_awsFactor);
                 break;
             default:

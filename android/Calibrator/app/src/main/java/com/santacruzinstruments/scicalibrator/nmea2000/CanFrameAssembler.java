@@ -107,6 +107,11 @@ public class CanFrameAssembler {
         }
 
         List<N2KPacketDef> packetDefs = N2KLib.pgnDefs.get(pgn);
+        if ( packetDefs == null){
+            Timber.d("Unknow PGN %d ", pgn);
+            return;
+        }
+
         N2KPacketDef pd = packetDefs.get(0);  // Grab the firts, since all of them should have the same type
         PGNInfo.PGNType pgnType = pd.pgnInfo.Type;
 

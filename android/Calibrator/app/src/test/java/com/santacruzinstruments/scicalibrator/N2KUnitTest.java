@@ -132,8 +132,7 @@ public class N2KUnitTest {
             assertEquals(expectedReq[i], generated.get(i));
         }
 
-        int [] params = {0xFFFE, 2};
-        p = makeGroupCommandPacket(MHU_CALIBRATION_PGN, (byte)3, params);
+        p = makeGroupCommandPacket(MHU_CALIBRATION_PGN, (byte)3, 4, 2);
         String [] expectedCmd = {
                 "09ED0300 40 16 00 54 FF 01 FF FF\r\n",
                 "09ED0300 41 FF FF FF FF 04 01 E4\r\n",

@@ -57,7 +57,7 @@ class N2KHandler {
     public:
         ImuCalGroupFunctionHandler(N2KHandler &n2kHandler, tNMEA2000 *_pNMEA2000):
                 CustomPgnGroupFunctionHandler(_pNMEA2000,IMU_CALIBRATION_PGN,
-                                              SCI_MFG_CODE, SCI_MFG_CODE), m_n2kHandler(n2kHandler) {}
+                                              SCI_MFG_CODE, SCI_INDUSTRY_CODE), m_n2kHandler(n2kHandler) {}
     protected:
         /// Network requested calibration values
         /// We reply with PGN 130902 containing these values
