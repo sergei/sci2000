@@ -12,7 +12,10 @@ import com.santacruzinstruments.scicalibrator.nmea2000.ItemType;
 import com.santacruzinstruments.scicalibrator.nmea2000.Nmea2000;
 
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class MainViewModel extends ViewModel implements Nmea2000.N2KListener {
     private static final String INVALID_VALUE = "...";
@@ -33,13 +36,19 @@ public class MainViewModel extends ViewModel implements Nmea2000.N2KListener {
         }
     }
 
+    public Map<ItemType, Calibratable> getItems() {
+        return items;
+    }
+
     private final HashMap<ItemType, Calibratable> items = new HashMap<>();
+    public List<ItemType> getItemsList() {
+        return new LinkedList<>(items.keySet());
+    }
 
     public MainViewModel() {
         items.put(ItemType.AWA, new Calibratable("AWA", true));
-        items.put(ItemType.AWS, new Calibratable("AWS", true));
+        items.put(ItemType.AWS, new Calibratable("AWS", false));
     }
-
 
     @Override
     public void OnConnectionStatus(boolean connected) {
