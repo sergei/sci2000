@@ -8,7 +8,6 @@ import static com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.Utils.Utils
 import android.content.Context;
 
 import com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KLib.N2KField;
-import com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KLib.N2KFieldDef;
 import com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KLib.N2KLib;
 import com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KLib.N2KPacket;
 import com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KLib.N2KTypeException;
@@ -24,9 +23,10 @@ import timber.log.Timber;
 public class Nmea2000 implements TransportTask.UsbConnectionListener {
 
     public interface N2KListener {
-        void onRcvdAwa(double twaDeg);
-        void onCurrAwaCal(double twaCalDeg);
         void OnConnectionStatus(boolean connected);
+        void onRcvdValue(ItemType item, double value);
+        void onRcvdCalibration(ItemType item, double cal);
+
     }
 
     private static Nmea2000 instance = null;
@@ -77,11 +77,12 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
         switch(packet.pgn){
             case windData_pgn:
                 if ( packet.fields[N2K.windData.windSpeed].getAvailability() == N2KField.Availability.AVAILABLE ){
-                    double tws = packet.fields[N2K.windData.windSpeed].getDecimal();
+                    double aws = packet.fields[N2K.windData.windSpeed].getDecimal();
+                    this.listener.onRcvdValue(ItemType.AWS, aws);
                 }
                 if ( packet.fields[N2K.windData.windAngle].getAvailability() == N2KField.Availability.AVAILABLE ){
                     double awa = radstodegs(packet.fields[N2K.windData.windAngle].getDecimal());
-                    this.listener.onRcvdAwa(awa);
+                    this.listener.onRcvdValue(ItemType.AWA, awa);
                 }
                 break;
             case SciWindCalibration_pgn:
@@ -90,10 +91,11 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
                 this.windCalDest = packet.src;
                 if ( packet.fields[N2K.SciWindCalibration.AWSMultiplier].getAvailability() == N2KField.Availability.AVAILABLE ){
                     double awsCal = radstodegs(packet.fields[N2K.SciWindCalibration.AWSMultiplier].getDecimal());
+                    this.listener.onRcvdCalibration(ItemType.AWS, awsCal);
                 }
                 if ( packet.fields[N2K.SciWindCalibration.AWAOffset].getAvailability() == N2KField.Availability.AVAILABLE ){
                     double awaCal = packet.fields[N2K.SciWindCalibration.AWAOffset].getDecimal();
-                    this.listener.onCurrAwaCal(awaCal);
+                    this.listener.onRcvdCalibration(ItemType.AWA, awaCal);
                 }
                 break;
         }
@@ -142,6 +144,23 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
             sendPacket(p);
         }
         windCalReceived = false;
+    }
+
+    public void sendCal(ItemType item, float calValue) {
+        N2KPacket p = null;
+        switch (item){
+            case AWA:
+                p = makeGroupCommandPacket(MHU_CALIBRATION_PGN, this.windCalDest, 4, calValue);
+                break;
+            case AWS:
+                p = makeGroupCommandPacket(MHU_CALIBRATION_PGN, this.windCalDest, 5, calValue);
+                break;
+        }
+
+        if ( p != null) {
+            sendPacket(p);
+            windCalReceived = false;
+        }
     }
 
     private void sendPacket(N2KPacket p) {

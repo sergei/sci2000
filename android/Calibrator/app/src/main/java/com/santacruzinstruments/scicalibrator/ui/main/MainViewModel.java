@@ -8,58 +8,38 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.santacruzinstruments.scicalibrator.nmea2000.ItemType;
 import com.santacruzinstruments.scicalibrator.nmea2000.Nmea2000;
 
+import java.util.HashMap;
 import java.util.Locale;
 
 public class MainViewModel extends ViewModel implements Nmea2000.N2KListener {
     private static final String INVALID_VALUE = "...";
-    MutableLiveData<Integer> awaCal = new MutableLiveData<>(0);
-    MutableLiveData<String> awa = new MutableLiveData<>(INVALID_VALUE);
 
     MutableLiveData<Boolean> isConnected = new MutableLiveData<>();
 
-    private boolean gotAwaCal = false;
-    private double currAwaCalDeg=0;
+    static class Calibratable{
+        final String name;
+        final boolean isDegree;
+        MutableLiveData<Integer> cal = new MutableLiveData<>(0);
+        MutableLiveData<String> value = new MutableLiveData<>(INVALID_VALUE);
+        boolean gotCal = false;
+        double currCal = 0;
 
-    public void startNmea2000(Context context) {
-        Nmea2000.Start(context, this);
-    }
-
-    LiveData<Integer> getAwaCal(){
-        return awaCal;
-    }
-
-    public void setAwaCal(int awaCal) {
-        this.awaCal.postValue(awaCal);
-    }
-
-    public void submitAwaCal() {
-        if( awaCal.getValue() != null) {
-            getNmea2000Instance().sendAwaCal(awaCal.getValue());
-            gotAwaCal = false;
+        Calibratable(String name, boolean isDegree) {
+            this.name = name;
+            this.isDegree = isDegree;
         }
     }
 
-    LiveData<String> getAwa(){
-        return awa;
+    private final HashMap<ItemType, Calibratable> items = new HashMap<>();
+
+    public MainViewModel() {
+        items.put(ItemType.AWA, new Calibratable("AWA", true));
+        items.put(ItemType.AWS, new Calibratable("AWS", true));
     }
 
-    @Override
-    public void onRcvdAwa(double twaDeg) {
-        double nonCalVal = twaDeg - currAwaCalDeg;
-        if ( gotAwaCal ){
-            this.awa.postValue(String.format(Locale.getDefault(), "%.1f = %.1f + %.1f", twaDeg, nonCalVal, currAwaCalDeg));
-        }else{
-            this.awa.postValue(INVALID_VALUE);
-        }
-    }
-
-    @Override
-    public void onCurrAwaCal(double twaCalDeg) {
-        currAwaCalDeg = twaCalDeg;
-        gotAwaCal = true;
-    }
 
     @Override
     public void OnConnectionStatus(boolean connected) {
@@ -70,5 +50,66 @@ public class MainViewModel extends ViewModel implements Nmea2000.N2KListener {
         return isConnected;
     }
 
+    public void startNmea2000(Context context) {
+        Nmea2000.Start(context, this);
+    }
+
+    LiveData<Integer> getCal(ItemType item){
+        Calibratable c = items.get(item);
+        assert c != null;
+        return c.cal;
+    }
+
+    public void setCal(ItemType item, int awaCal) {
+        Calibratable c = items.get(item);
+        assert c != null;
+        c.cal.postValue(awaCal);
+    }
+
+    public void submitCal(ItemType item) {
+        Calibratable c = items.get(item);
+
+        assert c != null;
+        if( c.cal.getValue() != null) {
+            getNmea2000Instance().sendCal(item, c.cal.getValue());
+            c.gotCal = false;
+        }
+    }
+
+    LiveData<String> getValue(ItemType item){
+        Calibratable c = items.get(item);
+        assert c != null;
+        return c.value;
+    }
+
+    @Override
+    public void onRcvdValue(ItemType item, double value) {
+        Calibratable c = items.get(item);
+        assert c != null;
+        if ( c.isDegree ){
+            double nonCalVal = value - c.currCal;
+            if ( c.gotCal ){
+                c.value.postValue(String.format(Locale.getDefault(), "%.1f = %.1f + %.1f", value, nonCalVal, c.currCal));
+            }else{
+                c.value.postValue(INVALID_VALUE);
+            }
+        }else{
+            double ratio = 1 + value / 100.;
+            double nonCalVal = value / ratio;
+            if ( c.gotCal ){
+                c.value.postValue(String.format(Locale.getDefault(), "%.1f = %.1f + %.1f", value, nonCalVal, c.currCal));
+            }else{
+                c.value.postValue(INVALID_VALUE);
+            }
+        }
+    }
+
+    @Override
+    public void onRcvdCalibration(ItemType item, double cal) {
+        Calibratable c = items.get(item);
+        assert c != null;
+        c.gotCal = true;
+        c.currCal = cal;
+    }
 
 }

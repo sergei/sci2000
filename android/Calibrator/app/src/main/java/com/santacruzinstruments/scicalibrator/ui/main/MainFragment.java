@@ -1,5 +1,7 @@
 package com.santacruzinstruments.scicalibrator.ui.main;
 
+import static com.santacruzinstruments.scicalibrator.nmea2000.ItemType.AWA;
+
 import androidx.lifecycle.ViewModelProvider;
 
 import android.os.Bundle;
@@ -40,14 +42,14 @@ public class MainFragment extends Fragment {
 
         binding = FragmentMainBinding.inflate(inflater, container, false);
 
-        // TWA
+        // AWA
         binding.buttonTwa.setOnClickListener(view -> {
             if( binding.seekBarTwa.getVisibility() == View.VISIBLE){
                 binding.seekBarTwa.setVisibility(View.GONE);
                 binding.buttonTwaCancel.setVisibility(View.GONE);
                 binding.twaCalValue.setVisibility(View.GONE);
                 ((Button)view).setText(R.string.calibrate);
-                mViewModel.submitAwaCal();
+                mViewModel.submitCal(AWA);
             }else{
                 binding.seekBarTwa.setVisibility(View.VISIBLE);
                 binding.buttonTwaCancel.setVisibility(View.VISIBLE);
@@ -65,7 +67,7 @@ public class MainFragment extends Fragment {
         binding.seekBarTwa.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                mViewModel.setAwaCal(progress);
+                mViewModel.setCal(AWA,progress);
             }
 
             @Override
@@ -89,9 +91,9 @@ public class MainFragment extends Fragment {
             }
         });
 
-        mViewModel.getAwaCal().observe(getViewLifecycleOwner(),
+        mViewModel.getCal(AWA).observe(getViewLifecycleOwner(),
                 val -> binding.twaCalValue.setText(getString(R.string.cal_angle, val)));
-        mViewModel.getAwa().observe(getViewLifecycleOwner(),
+        mViewModel.getValue(AWA).observe(getViewLifecycleOwner(),
                 val -> binding.twaValue.setText(val));
 
         return binding.getRoot();
