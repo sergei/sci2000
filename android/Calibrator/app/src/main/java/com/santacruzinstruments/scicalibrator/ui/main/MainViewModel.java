@@ -2,6 +2,8 @@ package com.santacruzinstruments.scicalibrator.ui.main;
 
 import static com.santacruzinstruments.scicalibrator.nmea2000.Nmea2000.getNmea2000Instance;
 
+import static java.lang.Math.abs;
+
 import android.content.Context;
 
 import androidx.lifecycle.LiveData;
@@ -69,10 +71,10 @@ public class MainViewModel extends ViewModel implements Nmea2000.N2KListener {
         return c.cal;
     }
 
-    public void setCal(ItemType item, int awaCal) {
+    public void setCal(ItemType item, int calValue) {
         Calibratable c = items.get(item);
         assert c != null;
-        c.cal.postValue(awaCal);
+        c.cal.postValue(calValue);
     }
 
     public void submitCal(ItemType item) {
@@ -95,18 +97,19 @@ public class MainViewModel extends ViewModel implements Nmea2000.N2KListener {
     public void onRcvdValue(ItemType item, double value) {
         Calibratable c = items.get(item);
         assert c != null;
+        String sign = c.currCal > 0 ? "+" : "-";
         if ( c.isDegree ){
             double nonCalVal = value - c.currCal;
             if ( c.gotCal ){
-                c.value.postValue(String.format(Locale.getDefault(), "%.1f = %.1f + %.1f", value, nonCalVal, c.currCal));
+                c.value.postValue(String.format(Locale.getDefault(), "%.1f° = %.1f° %s %.1f°", value, nonCalVal, sign, abs(c.currCal)));
             }else{
                 c.value.postValue(INVALID_VALUE);
             }
         }else{
-            double ratio = 1 + value / 100.;
+            double ratio = 1 + c.currCal / 100.;
             double nonCalVal = value / ratio;
             if ( c.gotCal ){
-                c.value.postValue(String.format(Locale.getDefault(), "%.1f = %.1f + %.1f", value, nonCalVal, c.currCal));
+                c.value.postValue(String.format(Locale.getDefault(), "%.1f = %.1f %s %.1f %%", value, nonCalVal, sign, abs(c.currCal)));
             }else{
                 c.value.postValue(INVALID_VALUE);
             }
@@ -114,11 +117,12 @@ public class MainViewModel extends ViewModel implements Nmea2000.N2KListener {
     }
 
     @Override
-    public void onRcvdCalibration(ItemType item, double cal) {
+    public void onRcvdCalibration(ItemType item, double calValue) {
         Calibratable c = items.get(item);
         assert c != null;
         c.gotCal = true;
-        c.currCal = cal;
+        c.currCal = calValue;
+        c.cal.postValue((int) calValue);
     }
 
 }

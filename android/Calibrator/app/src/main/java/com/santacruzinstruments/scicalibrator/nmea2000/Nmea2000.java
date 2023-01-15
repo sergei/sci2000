@@ -33,7 +33,7 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
     private final TransportTask transportTask;
     private final CanFrameAssembler canFrameAssembler;
     private final N2KListener listener;
-    boolean windCalReceived = false;
+    boolean mhuCalReceived = false;
     private boolean isConnected = false;
 
     public static final int MHU_CALIBRATION_PGN = 130900;  // MHU calibration
@@ -87,10 +87,10 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
                 break;
             case SciWindCalibration_pgn:
                 Timber.d("Received wind calibration %s", packet.toString());
-                windCalReceived = true;
+                mhuCalReceived = true;
                 this.windCalDest = packet.src;
                 if ( packet.fields[N2K.SciWindCalibration.AWSMultiplier].getAvailability() == N2KField.Availability.AVAILABLE ){
-                    double awsCal = radstodegs(packet.fields[N2K.SciWindCalibration.AWSMultiplier].getDecimal());
+                    double awsCal = packet.fields[N2K.SciWindCalibration.AWSMultiplier].getDecimal();
                     this.listener.onRcvdCalibration(ItemType.AWS, awsCal);
                 }
                 if ( packet.fields[N2K.SciWindCalibration.AWAOffset].getAvailability() == N2KField.Availability.AVAILABLE ){
@@ -129,21 +129,12 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
     @Override
     public void onTick() {
         if ( this.isConnected ){
-            if( !windCalReceived){
+            if( !mhuCalReceived){
                 Timber.d("Requesting wind calibration");
                 requestCurrentCal(MHU_CALIBRATION_PGN);
             }
 //            requestCurrentCal(SPEED_CALIBRATION_PGN);
         }
-    }
-
-    public void sendAwaCal(int twaCal) {
-        N2KPacket p = makeGroupCommandPacket(MHU_CALIBRATION_PGN, this.windCalDest, 4, twaCal);
-
-        if ( p != null) {
-            sendPacket(p);
-        }
-        windCalReceived = false;
     }
 
     public void sendCal(ItemType item, float calValue) {
@@ -159,7 +150,7 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
 
         if ( p != null) {
             sendPacket(p);
-            windCalReceived = false;
+            mhuCalReceived = false;
         }
     }
 
@@ -228,7 +219,7 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
             // We need to know type and resolution of the field we are setting
             // Get the commanded PGN definition
             N2KPacket cmdPgn = new N2KPacket(commandedPgn);
-            if ( cmdPgn.fields != null && fieldNo < cmdPgn.fields.length ){
+            if ( cmdPgn.fields != null && fieldNo <= cmdPgn.fields.length ){
                 final N2KField valueField = repset[N2K.nmeaRequestGroupFunction.rep.value];
                 valueField.fieldDef = cmdPgn.fields[fieldNo-1].fieldDef;  // Replace field definition with one from the commanded PGN
                 valueField.setDecimal(value);

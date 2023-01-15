@@ -1,7 +1,5 @@
 package com.santacruzinstruments.scicalibrator.ui.main;
 
-import static com.santacruzinstruments.scicalibrator.nmea2000.ItemType.AWA;
-
 import androidx.lifecycle.ViewModelProvider;
 
 import android.os.Bundle;
@@ -28,7 +26,6 @@ import java.util.List;
 public class MainFragment extends Fragment {
 
     static class CalItemViewHolder extends RecyclerView.ViewHolder{
-
         TextView itemLabel;
         TextView itemValue;
         Button buttonCalibrate;
@@ -87,17 +84,28 @@ public class MainFragment extends Fragment {
                     ((Button)view).setText(R.string.submit);
                 }
             });
+
             holder.buttonCancel.setOnClickListener(view -> {
                 holder.seekBar.setVisibility(View.GONE);
+                holder.calValue.setVisibility(View.GONE);
                 holder.buttonCancel.setVisibility(View.GONE);
                 holder.buttonCalibrate.setText(R.string.calibrate);
             });
-            holder.seekBar.setMin(-45);
-            holder.seekBar.setMax(45);
+
+            if ( calibratable.isDegree ){
+                holder.seekBar.setMin(-45);
+                holder.seekBar.setMax(45);
+            }else{
+                holder.seekBar.setMin(-50);
+                holder.seekBar.setMax(50);
+            }
+
             holder.seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
                 @Override
                 public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                    mViewModel.setCal(AWA,progress);
+                    if ( fromUser ){
+                        mViewModel.setCal(it, progress);
+                    }
                 }
 
                 @Override
@@ -112,7 +120,11 @@ public class MainFragment extends Fragment {
             });
 
             mViewModel.getCal(it).observe(getViewLifecycleOwner(),
-                    val -> holder.calValue.setText(getString(R.string.cal_angle, val)));
+                    val -> {
+                        holder.calValue.setText(getString(R.string.cal_angle, val));
+                        holder.seekBar.setProgress(val);
+                    });
+
             mViewModel.getValue(it).observe(getViewLifecycleOwner(),
                     val -> holder.itemValue.setText(val));
         }
@@ -163,8 +175,6 @@ public class MainFragment extends Fragment {
         mCalItemViewAdapter = new CalItemViewAdapter(mViewModel, mCalibratableItems);
         recyclerView.setAdapter(mCalItemViewAdapter);
         recyclerView.setLayoutManager( new LinearLayoutManager(getContext()));
-
-        // AWA
 
         return binding.getRoot();
     }

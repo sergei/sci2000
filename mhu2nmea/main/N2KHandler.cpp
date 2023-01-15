@@ -173,14 +173,8 @@ void N2KHandler::StartTask() {
 
         int64_t now = esp_timer_get_time();
         // Check age and invalidate if it's too old
-        if ( now - awsUpdateTime > AWS_TOUT){
-            isAwsValid = false;
-        }
         if ( now - awaUpdateTime > AWA_TOUT){
             isAwaValid = false;
-        }
-        if ( now - sowUpdateTime > SOW_TOUT){
-            isSowValid = false;
         }
 
         // Check if it's time to send the messages
@@ -206,7 +200,7 @@ void N2KHandler::StartTask() {
             double boatSpeed = isSowValid ? KnotsToms(sowKts) : N2kDoubleNA;
             SetN2kBoatSpeed(N2kMsg, this->uc_BoatSpeedSeqId++, boatSpeed, N2kDoubleNA, N2kSWRT_Paddle_wheel );
             bool sentOk = NMEA2000.SendMsg(N2kMsg, DEV_SPEED);
-            ESP_LOGI(TAG, "SetN2kWindSpeed SOW=%.0f %s", msToKnots(boatSpeed), sentOk ? "OK" : "Failed");
+            ESP_LOGI(TAG, "SetN2kBoatSpeed SOW=%.0f %s", msToKnots(boatSpeed), sentOk ? "OK" : "Failed");
             m_ledBlinker.SetBusState(sentOk);
         }
 

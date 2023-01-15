@@ -62,10 +62,7 @@ enum {
     DEV_NUM
 };
 
-
-static const int AWS_TOUT = 10 * 1000000;
 static const int AWA_TOUT = 10 * 1000000;
-static const int SOW_TOUT = 10 * 1000000;
 
 //static const int DEFAULT_MSG_TRANSMIT_PERIOD = 100;
 
