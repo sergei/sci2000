@@ -15,12 +15,8 @@
 
 #endif
 
-
-//#define WIND_SPEED_PULSE_IO 18
-//#define WATER_SPEED_PULSE_IO 35  // MHU wind speed pulse 35 - OPTO IN
-
-#define WIND_SPEED_PULSE_IO 15 // MHU wind speed pulse - DI1
-#define WATER_SPEED_PULSE_IO 13  // Paddle wheel pulse - DI2
+#define WIND_SPEED_PULSE_IO 13 // MHU wind speed pulse - DI1
+#define WATER_SPEED_PULSE_IO 15  // Paddle wheel pulse - DI2
 
 xQueueHandle evt_queue;   // A queue to handle  send events from sensors to N2K
 

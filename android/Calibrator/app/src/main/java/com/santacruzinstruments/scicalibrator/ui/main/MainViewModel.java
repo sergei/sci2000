@@ -50,6 +50,7 @@ public class MainViewModel extends ViewModel implements Nmea2000.N2KListener {
     public MainViewModel() {
         items.put(ItemType.AWA, new Calibratable("AWA", true));
         items.put(ItemType.AWS, new Calibratable("AWS", false));
+        items.put(ItemType.SPD, new Calibratable("SPD", false));
     }
 
     @Override

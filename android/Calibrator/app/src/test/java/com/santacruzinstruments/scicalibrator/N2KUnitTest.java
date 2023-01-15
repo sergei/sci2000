@@ -3,7 +3,6 @@ package com.santacruzinstruments.scicalibrator;
 import static com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KMsgs.N2K.SciWindCalibration_pgn;
 import static com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KMsgs.N2K.windData_pgn;
 import static com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.Utils.Utils.radstodegs;
-import static com.santacruzinstruments.scicalibrator.nmea2000.Nmea2000.MHU_CALIBRATION_PGN;
 import static com.santacruzinstruments.scicalibrator.nmea2000.Nmea2000.makeGroupCommandPacket;
 import static com.santacruzinstruments.scicalibrator.nmea2000.Nmea2000.makeGroupRequestPacket;
 
@@ -108,7 +107,7 @@ public class N2KUnitTest {
         // Need to create N2KLib() so some internal statics are initialized
         new N2KLib(null, Objects.requireNonNull(getClass().getClassLoader()).getResourceAsStream("pgns.json"));
 
-        N2KPacket p = makeGroupRequestPacket(MHU_CALIBRATION_PGN);
+        N2KPacket p = makeGroupRequestPacket(SciWindCalibration_pgn);
 
         assertNotNull(p);
 
@@ -132,7 +131,7 @@ public class N2KUnitTest {
             assertEquals(expectedReq[i], generated.get(i));
         }
 
-        p = makeGroupCommandPacket(MHU_CALIBRATION_PGN, (byte)3, 4, 2);
+        p = makeGroupCommandPacket(SciWindCalibration_pgn, (byte)3, 4, 2);
         String [] expectedCmd = {
                 "09ED0300 40 16 00 54 FF 01 FF FF\r\n",
                 "09ED0300 41 FF FF FF FF 04 01 E4\r\n",

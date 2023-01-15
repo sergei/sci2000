@@ -1,7 +1,9 @@
 package com.santacruzinstruments.scicalibrator.nmea2000;
 
+import static com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KMsgs.N2K.SciWaterCalibration_pgn;
 import static com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KMsgs.N2K.SciWindCalibration_pgn;
 import static com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KMsgs.N2K.nmeaRequestGroupFunction_pgn;
+import static com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KMsgs.N2K.speed_pgn;
 import static com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.N2KMsgs.N2K.windData_pgn;
 import static com.santacruzinstruments.scicalibrator.nmea2000.N2KLib.Utils.Utils.radstodegs;
 
@@ -29,21 +31,21 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
 
     }
 
+    public final static int SCI_MFG_CODE = 2020;  // # Our mfg code.
+    public final static int SCI_INDUSTRY_CODE = 4;  // Marine industry
+
     private static Nmea2000 instance = null;
+
     private final TransportTask transportTask;
     private final CanFrameAssembler canFrameAssembler;
     private final N2KListener listener;
-    boolean mhuCalReceived = false;
     private boolean isConnected = false;
 
-    public static final int MHU_CALIBRATION_PGN = 130900;  // MHU calibration
-    private static final int SPEED_CALIBRATION_PGN = 130901;  // MHU calibration
+    boolean mhuCalReceived = false;
+    private byte mhuCalDest = 0;  // Address of device where to MHU calibration
 
-    private byte windCalDest = 0;  // Address of device where to send wind calibration
-
-    public static int SCI_MFG_CODE = 2020;  // # Our mfg code.
-    public static int SCI_INDUSTRY_CODE = 4;  // Marine industry
-
+    boolean speedCalReceived = false;
+    private byte speedCalDest = 0;  // Address of device where to MHU calibration
 
     public static Nmea2000 getNmea2000Instance(){
         return instance;
@@ -85,10 +87,15 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
                     this.listener.onRcvdValue(ItemType.AWA, awa);
                 }
                 break;
+            case speed_pgn:
+                if ( packet.fields[N2K.speed.speedWaterReferenced].getAvailability() == N2KField.Availability.AVAILABLE ){
+                    double spd = packet.fields[N2K.speed.speedWaterReferenced].getDecimal();
+                    this.listener.onRcvdValue(ItemType.SPD, spd);
+                }
+                break;
             case SciWindCalibration_pgn:
-                Timber.d("Received wind calibration %s", packet.toString());
                 mhuCalReceived = true;
-                this.windCalDest = packet.src;
+                this.mhuCalDest = packet.src;
                 if ( packet.fields[N2K.SciWindCalibration.AWSMultiplier].getAvailability() == N2KField.Availability.AVAILABLE ){
                     double awsCal = packet.fields[N2K.SciWindCalibration.AWSMultiplier].getDecimal();
                     this.listener.onRcvdCalibration(ItemType.AWS, awsCal);
@@ -96,6 +103,14 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
                 if ( packet.fields[N2K.SciWindCalibration.AWAOffset].getAvailability() == N2KField.Availability.AVAILABLE ){
                     double awaCal = packet.fields[N2K.SciWindCalibration.AWAOffset].getDecimal();
                     this.listener.onRcvdCalibration(ItemType.AWA, awaCal);
+                }
+                break;
+            case SciWaterCalibration_pgn:
+                speedCalReceived = true;
+                this.speedCalDest = packet.src;
+                if ( packet.fields[N2K.SciWaterCalibration.SOWMultiplier].getAvailability() == N2KField.Availability.AVAILABLE ){
+                    double speedCal = packet.fields[N2K.SciWaterCalibration.SOWMultiplier].getDecimal();
+                    this.listener.onRcvdCalibration(ItemType.SPD, speedCal);
                 }
                 break;
         }
@@ -129,11 +144,16 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
     @Override
     public void onTick() {
         if ( this.isConnected ){
+
             if( !mhuCalReceived){
-                Timber.d("Requesting wind calibration");
-                requestCurrentCal(MHU_CALIBRATION_PGN);
+                Timber.d("Requesting MHU calibration");
+                requestCurrentCal(SciWindCalibration_pgn);
             }
-//            requestCurrentCal(SPEED_CALIBRATION_PGN);
+
+            if ( ! speedCalReceived ){
+                Timber.d("Requesting SPEED calibration");
+                requestCurrentCal(SciWaterCalibration_pgn);
+            }
         }
     }
 
@@ -141,16 +161,21 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
         N2KPacket p = null;
         switch (item){
             case AWA:
-                p = makeGroupCommandPacket(MHU_CALIBRATION_PGN, this.windCalDest, 4, calValue);
+                p = makeGroupCommandPacket(SciWindCalibration_pgn, this.mhuCalDest, N2K.SciWindCalibration.AWAOffset, calValue);
+                mhuCalReceived = false;
                 break;
             case AWS:
-                p = makeGroupCommandPacket(MHU_CALIBRATION_PGN, this.windCalDest, 5, calValue);
+                p = makeGroupCommandPacket(SciWindCalibration_pgn, this.mhuCalDest, N2K.SciWindCalibration.AWSMultiplier, calValue);
+                mhuCalReceived = false;
+                break;
+            case SPD:
+                p = makeGroupCommandPacket(SciWaterCalibration_pgn, this.speedCalDest, N2K.SciWaterCalibration.SOWMultiplier, calValue);
+                speedCalReceived = false;
                 break;
         }
 
         if ( p != null) {
             sendPacket(p);
-            mhuCalReceived = false;
         }
     }
 
@@ -189,7 +214,7 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
         }
     }
 
-    static public N2KPacket makeGroupCommandPacket(int commandedPgn, byte dest, int fieldNo, double value) {
+    static public N2KPacket makeGroupCommandPacket(int commandedPgn, byte dest, int fieldIdx, double value) {
         int[] functionCode = {1};  // Command
         N2KPacket p = new N2KPacket(nmeaRequestGroupFunction_pgn, functionCode);
         p.dest = dest;
@@ -215,13 +240,13 @@ public class Nmea2000 implements TransportTask.UsbConnectionListener {
             // Set parameter of interest
             repset = p.addRepSet();
             // Parameter field number
-            repset[N2K.nmeaRequestGroupFunction.rep.parameter].setInt(fieldNo);
+            repset[N2K.nmeaRequestGroupFunction.rep.parameter].setInt(fieldIdx + 1);
             // We need to know type and resolution of the field we are setting
             // Get the commanded PGN definition
             N2KPacket cmdPgn = new N2KPacket(commandedPgn);
-            if ( cmdPgn.fields != null && fieldNo <= cmdPgn.fields.length ){
+            if ( cmdPgn.fields != null && fieldIdx < cmdPgn.fields.length ){
                 final N2KField valueField = repset[N2K.nmeaRequestGroupFunction.rep.value];
-                valueField.fieldDef = cmdPgn.fields[fieldNo-1].fieldDef;  // Replace field definition with one from the commanded PGN
+                valueField.fieldDef = cmdPgn.fields[fieldIdx].fieldDef;  // Replace field definition with one from the commanded PGN
                 valueField.setDecimal(value);
             }
 
