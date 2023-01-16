@@ -20,7 +20,7 @@ void CalibrationStorage::ReadAwaCalibration(float &angleCorrRad) {
         closeNvs(handle);
     }
 
-    angleCorrRad = DegToRad((float)(awaCorr) * AWA_CAL_SCALE);
+    angleCorrRad = (float)DegToRad((float)(awaCorr) * AWA_CAL_SCALE);
 }
 
 void CalibrationStorage::ReadAwsCalibration(float &speedFactor) {

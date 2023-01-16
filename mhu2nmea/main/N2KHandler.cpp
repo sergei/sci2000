@@ -26,8 +26,8 @@ static const unsigned long RX_PGNS_SPEED[] PROGMEM={
 
 static const char *TAG = "mhu2nmea_N2KHandler";
 
-tN2kSyncScheduler N2KHandler::s_WindScheduler(false, DEFAULT_MSG_TRANSMIT_PERIOD, 500);
-tN2kSyncScheduler N2KHandler::s_WaterScheduler(false, DEFAULT_MSG_TRANSMIT_PERIOD, 600);
+tN2kSyncScheduler N2KHandler::s_WindScheduler(false, DEFAULT_WIND_TX_PERIOD, 500);
+tN2kSyncScheduler N2KHandler::s_WaterScheduler(false, DEFAULT_SPEED_TX_PERIOD, 600);
 
 N2KHandler::N2KHandler(const xQueueHandle &evtQueue, LEDBlinker &ledBlinker)
     : m_evtQueue(evtQueue)
@@ -187,10 +187,10 @@ void N2KHandler::StartTask() {
             tN2kWindReference windRef = !isAwsValid && !isAwaValid ? N2kWind_Unavailable : N2kWind_Apparent;
 
             SetN2kWindSpeed(N2kMsg, this->uc_WindSeqId++, localAwsMs, localAwaRad, windRef );
+            N2kMsg.Priority = DEFAULT_WIND_PRIO;
             bool sentOk = NMEA2000.SendMsg(N2kMsg, DEV_MHU);
             ESP_LOGI(TAG, "SetN2kWindSpeed AWS=%.0f AWA=%.1f ref=%d %s", msToKnots(localAwsMs), RadToDeg(localAwaRad), windRef, sentOk ? "OK" : "Failed");
             m_ledBlinker.SetBusState(sentOk);
-
         }
 
         if ( s_WaterScheduler.IsTime() ) {
@@ -199,6 +199,7 @@ void N2KHandler::StartTask() {
 
             double boatSpeed = isSowValid ? KnotsToms(sowKts) : N2kDoubleNA;
             SetN2kBoatSpeed(N2kMsg, this->uc_BoatSpeedSeqId++, boatSpeed, N2kDoubleNA, N2kSWRT_Paddle_wheel );
+            N2kMsg.Priority = DEFAULT_SPEED_PRIO;
             bool sentOk = NMEA2000.SendMsg(N2kMsg, DEV_SPEED);
             ESP_LOGI(TAG, "SetN2kBoatSpeed SOW=%.0f %s", msToKnots(boatSpeed), sentOk ? "OK" : "Failed");
             m_ledBlinker.SetBusState(sentOk);

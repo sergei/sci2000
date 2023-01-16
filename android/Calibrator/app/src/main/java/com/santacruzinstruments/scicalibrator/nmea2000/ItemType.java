@@ -4,4 +4,7 @@ public enum ItemType {
     AWA,
     AWS,
     SPD,
+    HDG,
+    PITCH,
+    ROLL
 }

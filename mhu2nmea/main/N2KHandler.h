@@ -64,9 +64,11 @@ enum {
 
 static const int AWA_TOUT = 10 * 1000000;
 
-//static const int DEFAULT_MSG_TRANSMIT_PERIOD = 100;
+static const int DEFAULT_WIND_TX_PERIOD = 100;
+static const unsigned char DEFAULT_WIND_PRIO = 2;
 
-static const int DEFAULT_MSG_TRANSMIT_PERIOD = 10000;
+static const int DEFAULT_SPEED_TX_PERIOD = 1000;
+static const unsigned char DEFAULT_SPEED_PRIO = 2;
 
 class N2KHandler {
 

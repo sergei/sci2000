@@ -1,29 +1,30 @@
 #include <esp_log.h>
 #include <nvs_flash.h>
+#include <N2kMessages.h>
 #include "CalibrationStorage.h"
 
 static const char *TAG = "imu2nmea_CalibrationStorage";
 
 void CalibrationStorage::ReadHeadingCalibration(float &angleCorrRad) {
-    readAngleCorr(NVS_KEY_HDG);
+    readAngleCorr(NVS_KEY_HDG, angleCorrRad);
 }
-void CalibrationStorage::UpdateHeadingCalibration(int16_t angleCorr, bool isRelative) {
-    updateAngleCorrection(NVS_KEY_HDG, angleCorr, isRelative);
+void CalibrationStorage::UpdateHeadingCalibration(int16_t angleCorr) {
+    updateAngleCorrection(NVS_KEY_HDG, angleCorr);
 }
 void CalibrationStorage::ReadRollCalibration(float &angleCorrRad) {
-    readAngleCorr(NVS_KEY_ROLL);
+    readAngleCorr(NVS_KEY_ROLL, angleCorrRad);
 }
 
-void CalibrationStorage::UpdateRollCalibration(int16_t angleCorr, bool isRelative) {
-    updateAngleCorrection(NVS_KEY_ROLL, angleCorr, isRelative);
+void CalibrationStorage::UpdateRollCalibration(int16_t angleCorr) {
+    updateAngleCorrection(NVS_KEY_ROLL, angleCorr);
 }
 
 void CalibrationStorage::ReadPitchCalibration(float &angleCorrRad) {
-    readAngleCorr(NVS_KEY_PITCH);
+    readAngleCorr(NVS_KEY_PITCH, angleCorrRad);
 }
 
-void CalibrationStorage::UpdatePitchCalibration(int16_t angleCorr, bool isRelative) {
-    updateAngleCorrection(NVS_KEY_PITCH, angleCorr, isRelative);
+void CalibrationStorage::UpdatePitchCalibration(int16_t angleCorr) {
+    updateAngleCorrection(NVS_KEY_PITCH, angleCorr);
 }
 
 void CalibrationStorage::readAngleCorr(const char *key, float &angleCorrRad) {
@@ -41,30 +42,15 @@ void CalibrationStorage::readAngleCorr(const char *key, float &angleCorrRad) {
         closeNvs(handle);
     }
 
-    angleCorrRad = (float)(corr) * ANGLE_CAL_SCALE;
+    angleCorrRad = (float)DegToRad((float)(corr) * ANGLE_CAL_SCALE);
 }
 
-void CalibrationStorage::updateAngleCorrection(const char *key, int16_t angleCorr, bool isRelative) {
+void CalibrationStorage::updateAngleCorrection(const char *key, int16_t angleCorr) {
     nvs_handle_t handle = openNvs();
     if (handle) {
-        int16_t currAwaCorr;
-        // Read current value
-        if (nvs_get_i16(handle, key, &currAwaCorr) != ESP_OK ){
-            currAwaCorr = DEFAULT_ANGLE_CORR;
-        }
-
-        // Update with received delta
-        int16_t newAwaCorr;
-        if ( isRelative ){
-            newAwaCorr = (int16_t)(currAwaCorr + angleCorr);
-            ESP_LOGI(TAG, "%s calibration %d + %d", key, currAwaCorr, angleCorr);
-        }else{
-            newAwaCorr = angleCorr;
-        }
-
         // Store updated value
-        esp_err_t err = nvs_set_i16(handle, key, newAwaCorr);
-        ESP_LOGI(TAG, "%s calibration %d  Stored %s", key, newAwaCorr, err == ESP_OK ? "OK" : "Failed");
+        esp_err_t err = nvs_set_i16(handle, key, angleCorr);
+        ESP_LOGI(TAG, "%s calibration %d  Stored %s", key, angleCorr, err == ESP_OK ? "OK" : "Failed");
         err = nvs_commit(handle);
         ESP_LOGI(TAG, "%s calibration committed %s", key, err == ESP_OK ? "OK" : "Failed");
         closeNvs(handle);

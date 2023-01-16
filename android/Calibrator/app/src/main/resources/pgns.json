@@ -40213,8 +40213,8 @@
             "Units":"degrees",
             "Resolution":0.01,
             "Signed":true,
-            "RangeMin":-3.142,
-            "RangeMax":3.142},
+            "RangeMin":-90,
+            "RangeMax":90},
           {
             "Order":5,
             "Id":"AWSMultiplier",
@@ -40339,8 +40339,8 @@
             "Units":"degrees",
             "Resolution":0.01,
             "Signed":true,
-            "RangeMin":-3.142,
-            "RangeMax":3.142},
+            "RangeMin":-90,
+            "RangeMax":90},
           {
             "Order":5,
             "Id":"PitchOffset",
@@ -40351,8 +40351,8 @@
             "Units":"degrees",
             "Resolution":0.01,
             "Signed":true,
-            "RangeMin":-3.142,
-            "RangeMax":3.142},
+            "RangeMin":-90,
+            "RangeMax":90},
           {
             "Order":6,
             "Id":"RollOffset",
@@ -40363,8 +40363,8 @@
             "Units":"degrees",
             "Resolution":0.01,
             "Signed":true,
-            "RangeMin":-3.142,
-            "RangeMax":3.142}
+            "RangeMin":-90,
+            "RangeMax":90}
         ]
       }
     ]

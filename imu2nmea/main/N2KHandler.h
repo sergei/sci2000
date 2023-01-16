@@ -26,6 +26,8 @@ private:
 
 static const int SCI_MFG_CODE = 2020;    // Our mfg code.
 static const int SCI_INDUSTRY_CODE = 4;  // Marine industry
+static const uint16_t SCI_IND_MFG_CODE = (SCI_INDUSTRY_CODE << 13) | (0x03 << 11) | SCI_MFG_CODE;
+
 static const int IMU_PR_CODE = 132;
 static const char *const MHU_MODEL_ID = "SCI IMU->N2K";
 static const char *const MFG_SW_VERSION = "1.0.0.0 (2022-12-07)";
@@ -35,7 +37,6 @@ enum {
     DEV_NUM
 };
 
-static const int CALIBRATION_RESTORE_DEFAULT = (int16_t) 0xfffe;
 static const unsigned long IMU_CALIBRATION_PGN = 130902;  // IMU calibration
 /*
     Proprietary PGN 130902 IMU calibration
@@ -49,6 +50,14 @@ static const unsigned long IMU_CALIBRATION_PGN = 130902;  // IMU calibration
 
 
 static const int IMU_TOUT = 10 * 1000000;
+
+//static const int DEFAULT_IMU_TX_RATE = 200;
+
+static const int DEFAULT_HDG_TX_RATE = 100;
+static const unsigned char  DEFAULT_HDG_TX_PRIO = 2;
+
+static const int DEFAULT_ATTITUDE_TX_RATE = 1000;
+static const unsigned char  DEFAULT_ATTITUDE_TX_PRIO = 3;
 
 class N2KHandler {
 
@@ -86,9 +95,10 @@ private:
 
     const xQueueHandle &m_evtQueue;
     LEDBlinker &m_ledBlinker;
+    ImuCalGroupFunctionHandler m_imuCalGroupFunctionHandler;
     N2KTwaiBusAlertListener m_busListener;
 
-    unsigned char uc_ImuSeqId = 0;
+    unsigned char uc_HdgSeqId = 0;
 
     bool isImuValid = false;
     int64_t imuUpdateTime = 0;
@@ -97,14 +107,15 @@ private:
     float roll=0;
 
     ESP32N2kStream debugStream;
-    static tN2kSyncScheduler s_ImuScheduler;
+    static tN2kSyncScheduler s_HdgScheduler;
+    static tN2kSyncScheduler s_AttScheduler;
 
     static bool SendImuCalValues();
 
     // Calibration values
-    float &m_hdgCorrRad = 0;
-    float &m_pitchCorrRad = 0;
-    float &m_rollCorrRad = 0;
+    float m_hdgCorrRad = 0;
+    float m_pitchCorrRad = 0;
+    float m_rollCorrRad = 0;
 };
 
 

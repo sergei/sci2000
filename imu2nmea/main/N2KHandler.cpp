@@ -10,6 +10,7 @@ NMEA2000_esp32_twai NMEA2000(ESP32_CAN_TX_PIN, ESP32_CAN_RX_PIN, TWAI_MODE_NORMA
 
 static const unsigned long TX_PGNS_IMU[] PROGMEM={127250, // Vessel Heading
                                                   127257, // Attitude
+                                                  IMU_CALIBRATION_PGN,
                                                   0};
 
 static const unsigned long RX_PGNS_IMU[] PROGMEM={
@@ -17,11 +18,13 @@ static const unsigned long RX_PGNS_IMU[] PROGMEM={
 
 static const char *TAG = "imu2nmea_N2KHandler";
 
-tN2kSyncScheduler N2KHandler::s_ImuScheduler(false, 200, 0);
+tN2kSyncScheduler N2KHandler::s_HdgScheduler(false, DEFAULT_HDG_TX_RATE, 0);
+tN2kSyncScheduler N2KHandler::s_AttScheduler(false, DEFAULT_ATTITUDE_TX_RATE, 0);
 
 N2KHandler::N2KHandler(const xQueueHandle &evtQueue, LEDBlinker &ledBlinker)
     :m_evtQueue(evtQueue)
     ,m_ledBlinker(ledBlinker)
+    ,m_imuCalGroupFunctionHandler(*this, &NMEA2000)
     ,m_busListener(evtQueue)
 {
 }
@@ -73,7 +76,9 @@ void N2KHandler::Init() {
 
     NMEA2000.ExtendReceiveMessages(RX_PGNS_IMU, DEV_IMU);
 
+    NMEA2000.AddGroupFunctionHandler(&m_imuCalGroupFunctionHandler);
     NMEA2000.SetOnOpen(OnOpen);
+    
 }
 
 static void n2k_task( void *me ) {
@@ -126,24 +131,42 @@ void N2KHandler::Start() {
         }
 
         // Check if it's time to send the messages
-        if ( s_ImuScheduler.IsTime() ) {
-            s_ImuScheduler.UpdateNextTime();
+        bool hdgWasSent = false;
+        if ( s_HdgScheduler.IsTime() ) {
+            s_HdgScheduler.UpdateNextTime();
 
-            tN2kMsg N2kMsg;
             double localHdgRad = isImuValid ? DegToRad(hdg) : N2kDoubleNA;
 
-            SetN2kMagneticHeading(N2kMsg, this->uc_ImuSeqId, localHdgRad);
+            this->uc_HdgSeqId = this->uc_HdgSeqId % 253;
+
+            tN2kMsg N2kMsg;
+            SetN2kMagneticHeading(N2kMsg, this->uc_HdgSeqId, localHdgRad);
+            N2kMsg.Priority = DEFAULT_HDG_TX_PRIO;
             bool sentOk = NMEA2000.SendMsg(N2kMsg, DEV_IMU);
             m_ledBlinker.SetBusState(sentOk);
             ESP_LOGD(TAG, "SetN2kMagneticHeading HDG=%.1f  %s", RadToDeg(localHdgRad), sentOk ? "OK" : "Failed");
+            hdgWasSent = true;
+        }
 
+        // Check if it's time to send the messages
+        if ( s_AttScheduler.IsTime() ) {
+            s_AttScheduler.UpdateNextTime();
+
+            double localYawRad = 0;  // Not quite sure what it's supposed to be referenced to. Let's assume heading, so it's always 0
             double localRollRad = isImuValid ? DegToRad(roll) : N2kDoubleNA;
             double localPitchRad = isImuValid ? DegToRad(pitch) : N2kDoubleNA;
 
-            SetN2kAttitude(N2kMsg, this->uc_ImuSeqId++, localHdgRad,localPitchRad, localRollRad);
-            sentOk = NMEA2000.SendMsg(N2kMsg, DEV_IMU);
-            ESP_LOGD(TAG, "SetN2kMagneticHeading HDG=%.1f PITCH=%.0f ROLL=%.0f %s", RadToDeg(localHdgRad), RadToDeg(localPitchRad), RadToDeg(localRollRad), sentOk ? "OK" : "Failed");
+            tN2kMsg N2kMsg;
+            // Use heading sequence id to bin them together
+            SetN2kAttitude(N2kMsg, this->uc_HdgSeqId, localYawRad, localPitchRad, localRollRad);
+            N2kMsg.Priority = DEFAULT_ATTITUDE_TX_PRIO;
+            bool sentOk = NMEA2000.SendMsg(N2kMsg, DEV_IMU);
             m_ledBlinker.SetBusState(sentOk);
+            ESP_LOGD(TAG, "SetN2kAttitude HDG=%.1f PITCH=%.0f ROLL=%.0f %s", RadToDeg(localYawRad), RadToDeg(localPitchRad), RadToDeg(localRollRad), sentOk ? "OK" : "Failed");
+        }
+
+        if( hdgWasSent ){
+            this->uc_HdgSeqId ++;
         }
 
         // crank NMEA2000 state machine
@@ -155,7 +178,8 @@ void N2KHandler::Start() {
 // Call back for NMEA2000 open. This will be called, when library starts bus communication.
 void N2KHandler::OnOpen() {
     // Start schedulers now.
-    s_ImuScheduler.UpdateNextTime();
+    s_HdgScheduler.UpdateNextTime();
+    s_AttScheduler.UpdateNextTime();
 }
 
 N2KTwaiBusAlertListener::N2KTwaiBusAlertListener(QueueHandle_t const &evtQueue)
@@ -189,10 +213,10 @@ bool N2KHandler::SendImuCalValues() {
     tN2kMsg N2kMsg;
     N2kMsg.SetPGN(IMU_CALIBRATION_PGN);
     N2kMsg.Priority=2;
-    N2kMsg.Add2ByteUInt((SCI_MFG_CODE << 5) | (0x03 << 3) | SCI_INDUSTRY_CODE);
-    N2kMsg.Add2ByteDouble(hdgCorrRad,ANGLE_CAL_SCALE);
-    N2kMsg.Add2ByteDouble(pitchCorrRad,ANGLE_CAL_SCALE);
-    N2kMsg.Add2ByteDouble(rollCorrRad,ANGLE_CAL_SCALE);
+    N2kMsg.Add2ByteUInt(SCI_IND_MFG_CODE);
+    N2kMsg.Add2ByteDouble(RadToDeg(hdgCorrRad),ANGLE_CAL_SCALE);
+    N2kMsg.Add2ByteDouble(RadToDeg(pitchCorrRad),ANGLE_CAL_SCALE);
+    N2kMsg.Add2ByteDouble(RadToDeg(rollCorrRad),ANGLE_CAL_SCALE);
     return NMEA2000.SendMsg(N2kMsg, DEV_IMU);
 }
 
@@ -212,34 +236,22 @@ bool N2KHandler::ImuCalGroupFunctionHandler::ProcessCommand(const tN2kMsg &N2kMs
     for( int i=0; i < NumberOfParameterPairs; i++){
         uint8_t fn = N2kMsg.GetByte(Index);
         switch (fn){
-            case 4: // Field 4: HeadingGOffset, 2 bytes 0xfffe - restore default 0xFFFF - leave unchanged
+            case 4: // Field 4: HeadingGOffset
                 value = N2kMsg.Get2ByteInt(Index);
                 ESP_LOGI(TAG, "HeadingGOffset=%d", value);
-                if (value == CALIBRATION_RESTORE_DEFAULT ){ // Restore default
-                    CalibrationStorage::UpdateHeadingCalibration(DEFAULT_ANGLE_CORR, false);
-                }else{
-                    CalibrationStorage::UpdateHeadingCalibration(value, true);
-                }
+                CalibrationStorage::UpdateHeadingCalibration(value);
                 CalibrationStorage::ReadHeadingCalibration(m_n2kHandler.m_hdgCorrRad);
                 break;
-            case 5: // Field 5: PitchOffset, 2 bytes 0xfffe - restore default 0xFFFF - leave unchanged
+            case 5: // Field 5: PitchOffset
                 value = N2kMsg.Get2ByteInt(Index);
                 ESP_LOGI(TAG, "PitchOffset=%d", value);
-                if (value == CALIBRATION_RESTORE_DEFAULT ){ // Restore default
-                    CalibrationStorage::UpdatePitchCalibration(DEFAULT_ANGLE_CORR, false);
-                }else{
-                    CalibrationStorage::UpdatePitchCalibration(value, true);
-                }
+                CalibrationStorage::UpdatePitchCalibration(value);
                 CalibrationStorage::ReadPitchCalibration(m_n2kHandler.m_pitchCorrRad);
                 break;
             case 6: // Field 6: RollOffset, 2 bytes 0xfffe - restore default 0xFFFF - leave unchanged
                 value = N2kMsg.Get2ByteInt(Index);
                 ESP_LOGI(TAG, "RollOffset=%d", value);
-                if (value == CALIBRATION_RESTORE_DEFAULT ){ // Restore default
-                    CalibrationStorage::UpdateRollCalibration(DEFAULT_ANGLE_CORR, false);
-                }else{
-                    CalibrationStorage::UpdateRollCalibration(value, true);
-                }
+                CalibrationStorage::UpdateRollCalibration(value);
                 CalibrationStorage::ReadRollCalibration(m_n2kHandler.m_rollCorrRad);
                 break;
             default:

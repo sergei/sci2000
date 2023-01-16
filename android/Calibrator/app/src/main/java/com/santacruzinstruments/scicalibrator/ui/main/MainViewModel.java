@@ -13,6 +13,7 @@ import androidx.lifecycle.ViewModel;
 import com.santacruzinstruments.scicalibrator.nmea2000.ItemType;
 import com.santacruzinstruments.scicalibrator.nmea2000.Nmea2000;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -44,13 +45,18 @@ public class MainViewModel extends ViewModel implements Nmea2000.N2KListener {
 
     private final HashMap<ItemType, Calibratable> items = new HashMap<>();
     public List<ItemType> getItemsList() {
-        return new LinkedList<>(items.keySet());
+        final LinkedList<ItemType> itemsList = new LinkedList<>(items.keySet());
+        Collections.sort(itemsList);
+        return itemsList;
     }
 
     public MainViewModel() {
         items.put(ItemType.AWA, new Calibratable("AWA", true));
         items.put(ItemType.AWS, new Calibratable("AWS", false));
         items.put(ItemType.SPD, new Calibratable("SPD", false));
+        items.put(ItemType.HDG, new Calibratable("HDG", true));
+        items.put(ItemType.PITCH, new Calibratable("Pitch", true));
+        items.put(ItemType.ROLL, new Calibratable("Roll", true));
     }
 
     @Override
