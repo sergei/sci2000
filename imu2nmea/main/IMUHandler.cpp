@@ -17,7 +17,7 @@ static const int REG_CAL = (uint8_t) 0x1e;
 
 static const char *TAG = "imu2nmea_IMUHandler";
 
-static void n2k_task( void *me ) {
+static void imu_task(void *me ) {
     ((IMUHandler *)me)->Task();
 }
 
@@ -31,12 +31,12 @@ IMUHandler::IMUHandler(QueueHandle_t const &eventQueue, int sda_io_num, int scl_
 
 void IMUHandler::Start() {
     xTaskCreate(
-            n2k_task,         /* Function that implements the task. */
+            imu_task,         /* Function that implements the task. */
             "IMUTask",            /* Text name for the task. */
             16 * 1024,        /* Stack size in words, not bytes. */
-            ( void * ) this,  /* Parameter passed into the task. */
+            (void *) this,  /* Parameter passed into the task. */
             tskIDLE_PRIORITY + 1, /* Priority at which the task is created. */
-            nullptr );        /* Used to pass out the created task's handle. */
+            nullptr);        /* Used to pass out the created task's handle. */
 }
 
 [[noreturn]] void IMUHandler::Task() {
@@ -90,7 +90,7 @@ void IMUHandler::Start() {
             xQueueSend(eventQueue, &evt, 0);
         }
 
-        vTaskDelay(100 / portTICK_PERIOD_MS); // 500 mS
+        vTaskDelay(100 / portTICK_PERIOD_MS); // FIXME must be driven by N2K rate
     }
 }
 

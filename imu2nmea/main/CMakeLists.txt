@@ -3,6 +3,7 @@ idf_component_register(
         imu2nmea_main.cpp
         ESP32N2kStream.cpp
         IMUHandler.cpp
+        GPSHandler.cpp
         N2KHandler.cpp
         CalibrationStorage.cpp
         LEDBlinker.cpp
