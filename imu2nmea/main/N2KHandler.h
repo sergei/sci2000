@@ -14,6 +14,7 @@
 #include "N2kMessages.h"
 #include "NMEA2000_esp32_twai.h"
 #include "LEDBlinker.h"
+#include "minmea.h"
 
 class N2KTwaiBusAlertListener: public TwaiBusAlertListener{
 public:
@@ -52,12 +53,16 @@ static const unsigned long IMU_CALIBRATION_PGN = 130902;  // IMU calibration
 static const int IMU_TOUT = 10 * 1000000;
 
 //static const int DEFAULT_IMU_TX_RATE = 200;
+static const int TWAI_TX_QUEUE_LEN = 20;
 
 static const int DEFAULT_HDG_TX_RATE = 100;
 static const unsigned char  DEFAULT_HDG_TX_PRIO = 2;
 
 static const int DEFAULT_ATTITUDE_TX_RATE = 1000;
 static const unsigned char  DEFAULT_ATTITUDE_TX_PRIO = 3;
+
+static const int SEC_IN_DAY = 24 * 60 * 60;
+
 
 class N2KHandler {
 
@@ -98,7 +103,7 @@ private:
     ImuCalGroupFunctionHandler m_imuCalGroupFunctionHandler;
     N2KTwaiBusAlertListener m_busListener;
 
-    unsigned char uc_HdgSeqId = 0;
+    unsigned char uc_SeqId = 0;
 
     bool isImuValid = false;
     int64_t imuUpdateTime = 0;
@@ -116,6 +121,14 @@ private:
     float m_hdgCorrRad = 0;
     float m_pitchCorrRad = 0;
     float m_rollCorrRad = 0;
+
+    minmea_sentence_gga m_gga = {};
+    bool gotGga = false;
+    minmea_sentence_rmc m_rmc = {};
+    bool gotRmc = false;
+
+    void transmitGpsData(const minmea_sentence_rmc &rmc) ;
+    void transmitFullGpsData(minmea_sentence_gga gga, uint16_t DaysSince1970);
 };
 
 

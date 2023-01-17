@@ -6,10 +6,14 @@
 #include "Event.hpp"
 #include "CalibrationStorage.h"
 
-NMEA2000_esp32_twai NMEA2000(ESP32_CAN_TX_PIN, ESP32_CAN_RX_PIN, TWAI_MODE_NORMAL);
+NMEA2000_esp32_twai NMEA2000(ESP32_CAN_TX_PIN, ESP32_CAN_RX_PIN, TWAI_MODE_NORMAL, TWAI_TX_QUEUE_LEN);
 
 static const unsigned long TX_PGNS_IMU[] PROGMEM={127250, // Vessel Heading
                                                   127257, // Attitude
+                                                  126992, // System time
+                                                  129025, // Position, Rapid Update
+                                                  129026,  // COG & SOG, Rapid Update
+                                                  127258,  // Magnetic Variation
                                                   IMU_CALIBRATION_PGN,
                                                   0};
 
@@ -111,16 +115,30 @@ void N2KHandler::Start() {
         if (res == pdTRUE) {
             switch (evt.src) {
                 case IMU:
-                    hdg = evt.u.imu.hdg + RadToDeg(m_hdgCorrRad);
-                    pitch = evt.u.imu.pitch + RadToDeg(m_pitchCorrRad);
-                    roll = evt.u.imu.roll + RadToDeg(m_rollCorrRad);
+                    hdg = (float)(evt.u.imu.hdg + RadToDeg(m_hdgCorrRad));
+                    pitch = (float)(evt.u.imu.pitch + RadToDeg(m_pitchCorrRad));
+                    roll = (float)(evt.u.imu.roll + RadToDeg(m_rollCorrRad));
                     isImuValid = evt.isValid;
                     if( isImuValid ){
                         imuUpdateTime = esp_timer_get_time();
                     }
                     break;
+                case GPS_DATA_RMC:
+                    m_rmc = evt.u.gps.rmc;
+                    gotRmc = true;
+                    break;
+                case GPS_DATA_GGA:
+                    m_gga = evt.u.gps.gga;
+                    gotGga = true;
+                    break;
                 case CAN_DRIVER_EVENT:
                     break;
+            }
+
+            if( gotRmc && gotGga ){
+                transmitGpsData(m_rmc);
+                gotRmc = false;
+                gotGga = false;
             }
         }
 
@@ -131,21 +149,17 @@ void N2KHandler::Start() {
         }
 
         // Check if it's time to send the messages
-        bool hdgWasSent = false;
         if ( s_HdgScheduler.IsTime() ) {
             s_HdgScheduler.UpdateNextTime();
 
             double localHdgRad = isImuValid ? DegToRad(hdg) : N2kDoubleNA;
 
-            this->uc_HdgSeqId = this->uc_HdgSeqId % 253;
-
             tN2kMsg N2kMsg;
-            SetN2kMagneticHeading(N2kMsg, this->uc_HdgSeqId, localHdgRad);
+            SetN2kMagneticHeading(N2kMsg, this->uc_SeqId, localHdgRad);
             N2kMsg.Priority = DEFAULT_HDG_TX_PRIO;
             bool sentOk = NMEA2000.SendMsg(N2kMsg, DEV_IMU);
             m_ledBlinker.SetBusState(sentOk);
             ESP_LOGD(TAG, "SetN2kMagneticHeading HDG=%.1f  %s", RadToDeg(localHdgRad), sentOk ? "OK" : "Failed");
-            hdgWasSent = true;
         }
 
         // Check if it's time to send the messages
@@ -158,20 +172,90 @@ void N2KHandler::Start() {
 
             tN2kMsg N2kMsg;
             // Use heading sequence id to bin them together
-            SetN2kAttitude(N2kMsg, this->uc_HdgSeqId, localYawRad, localPitchRad, localRollRad);
+            SetN2kAttitude(N2kMsg, this->uc_SeqId, localYawRad, localPitchRad, localRollRad);
             N2kMsg.Priority = DEFAULT_ATTITUDE_TX_PRIO;
             bool sentOk = NMEA2000.SendMsg(N2kMsg, DEV_IMU);
             m_ledBlinker.SetBusState(sentOk);
             ESP_LOGD(TAG, "SetN2kAttitude HDG=%.1f PITCH=%.0f ROLL=%.0f %s", RadToDeg(localYawRad), RadToDeg(localPitchRad), RadToDeg(localRollRad), sentOk ? "OK" : "Failed");
         }
 
-        if( hdgWasSent ){
-            this->uc_HdgSeqId ++;
-        }
+        this->uc_SeqId = (this->uc_SeqId + 1) % 253;
 
         // crank NMEA2000 state machine
         NMEA2000.ParseMessages();
     }
+}
+
+void N2KHandler::transmitFullGpsData(minmea_sentence_gga gga, uint16_t DaysSince1970) {
+
+    double SecondsSinceMidnight = gga.time.hours * 3600 + gga.time.minutes * 60 + gga.time.seconds + gga.time.microseconds * 1e-6;
+    double Latitude =  gga.fix_quality ?  minmea_tocoord(&gga.latitude) : N2kDoubleNA;
+    double Longitude = gga.fix_quality ?  minmea_tocoord(&gga.longitude)  : N2kDoubleNA;
+    double Altitude = gga.fix_quality ? minmea_tofloat(&gga.altitude) : N2kDoubleNA;
+    tN2kGNSStype GNSStype = N2kGNSSt_GPS;
+    auto GNSSmethod = (tN2kGNSSmethod) gga.fix_quality;
+    unsigned char nSatellites = gga.satellites_tracked;
+    double HDOP = gga.fix_quality ? minmea_tofloat(&gga.hdop) : N2kDoubleNA;
+
+    tN2kMsg N2kMsg;
+    SetN2kGNSS(N2kMsg, this->uc_SeqId, DaysSince1970,  SecondsSinceMidnight,
+               Latitude,  Longitude,  Altitude,
+               GNSStype,  GNSSmethod,
+               nSatellites,  HDOP);
+
+    bool sentOk = NMEA2000.SendMsg(N2kMsg, DEV_IMU);
+    m_ledBlinker.SetBusState(sentOk);
+    ESP_LOGD(TAG, "SetN2kGNSS  %s", sentOk ? "OK" : "Failed");
+}
+
+void N2KHandler::transmitGpsData(const minmea_sentence_rmc &rmc)  {
+    tN2kMsg N2kMsg;
+    timespec ts = {};
+
+    // seconds since midnight
+    bool wholeSecFrame = true;
+    uint16_t systemDate = 0;
+
+    if(minmea_gettime(&ts, &rmc.date, &rmc.time) == 0 ) {
+        wholeSecFrame = ts.tv_nsec == 0;
+
+        if ( wholeSecFrame ) {  // Send time only on integer seconds
+            systemDate = ts.tv_sec / SEC_IN_DAY; // Days since 1970-01-01
+            double systemTime = fmod(ts.tv_sec + ts.tv_nsec * 1.e-9, SEC_IN_DAY);
+            SetN2kSystemTime(N2kMsg, this->uc_SeqId, systemDate, systemTime);
+            bool sentOk = NMEA2000.SendMsg(N2kMsg, DEV_IMU);
+            m_ledBlinker.SetBusState(sentOk);
+            ESP_LOGD(TAG, "SetN2kSystemTime date=%d time=%.3f  %s", systemDate, systemTime, sentOk ? "OK" : "Failed");
+        }
+    }
+
+    if ( wholeSecFrame ){  // Send full GPS data
+        transmitFullGpsData(m_gga, systemDate);
+        if( rmc.valid) {
+            // Magnetic variation on full second only
+            double magVar = DegToRad(minmea_tofloat(&rmc.variation));
+            SetN2kMagneticVariation(N2kMsg, this->uc_SeqId, N2kmagvar_Calc, systemDate, magVar);
+            N2kMsg.Priority = 6;
+            bool sentOk = NMEA2000.SendMsg(N2kMsg, DEV_IMU);
+            m_ledBlinker.SetBusState(sentOk);
+            ESP_LOGD(TAG, "SetN2kMagneticVariation var=%.5f %s", magVar, sentOk ? "OK" : "Failed");
+        }
+    }else {  // Send rapid update
+        double latitude = rmc.valid ? minmea_tocoord(&rmc.latitude) : N2kDoubleNA;
+        double longitude = rmc.valid ? minmea_tocoord(&rmc.longitude) : N2kDoubleNA;
+        SetN2kLatLonRapid(N2kMsg, latitude, longitude);
+        bool sentOk = NMEA2000.SendMsg(N2kMsg, DEV_IMU);
+        m_ledBlinker.SetBusState(sentOk);
+        ESP_LOGD(TAG, "SetN2kLatLonRapid lat=%.5f time=%.5f  %s", latitude, longitude, sentOk ? "OK" : "Failed");
+
+        double cog = rmc.valid ? DegToRad(minmea_tofloat(&rmc.course)) : N2kDoubleNA;
+        double sog = rmc.valid ? KnotsToms(minmea_tofloat(&rmc.speed)): N2kDoubleNA;
+        SetN2kCOGSOGRapid(N2kMsg, this->uc_SeqId, N2khr_true, cog, sog);
+        sentOk = NMEA2000.SendMsg(N2kMsg, DEV_IMU);
+        m_ledBlinker.SetBusState(sentOk);
+        ESP_LOGD(TAG, "SetN2kLatLonRapid cog=%.5f sog=%.5f  %s", cog, sog, sentOk ? "OK" : "Failed");
+    }
+
 }
 
 // *****************************************************************************

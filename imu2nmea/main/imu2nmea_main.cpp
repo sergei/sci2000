@@ -24,7 +24,7 @@ extern "C" [[noreturn]] void app_main(void)
     // Initialize event queue
     evt_queue = xQueueCreate(10, sizeof(Event));
     ledBlinker.Start();
-//    n2KHandler.Start();
+    n2KHandler.Start();
     gpsHandler.Start();
     imuHandler.Task();
 

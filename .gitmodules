@@ -10,3 +10,6 @@
 [submodule "android/Calibrator/app/src/main/java/com/santacruzinstruments/scicalibrator/nmea2000/N2KLib"]
 	path = android/Calibrator/app/src/main/java/com/santacruzinstruments/scicalibrator/nmea2000/N2KLib
 	url = git@github.com:sergei/N2KLib.git
+[submodule "imu2nmea/components/minmea"]
+	path = imu2nmea/components/minmea
+	url = git@github.com:sergei/minmea.git
