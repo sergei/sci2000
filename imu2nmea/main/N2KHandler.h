@@ -127,6 +127,9 @@ private:
     minmea_sentence_rmc m_rmc = {};
     bool gotRmc = false;
 
+    double m_magDecl = 0;
+    bool m_magDeclComputed = false;
+
     void transmitGpsData(const minmea_sentence_rmc &rmc) ;
     void transmitFullGpsData(minmea_sentence_gga gga, uint16_t DaysSince1970);
 };

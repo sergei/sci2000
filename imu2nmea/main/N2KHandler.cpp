@@ -5,6 +5,7 @@
 #include "N2KHandler.h"
 #include "Event.hpp"
 #include "CalibrationStorage.h"
+#include "wmm.h"
 
 NMEA2000_esp32_twai NMEA2000(ESP32_CAN_TX_PIN, ESP32_CAN_RX_PIN, TWAI_MODE_NORMAL, TWAI_TX_QUEUE_LEN);
 
@@ -232,9 +233,15 @@ void N2KHandler::transmitGpsData(const minmea_sentence_rmc &rmc)  {
     if ( wholeSecFrame ){  // Send full GPS data
         transmitFullGpsData(m_gga, systemDate);
         if( rmc.valid) {
+            if ( ! m_magDeclComputed ) {
+                double year = systemDate / 365.25 + 1970;
+                m_magDecl = computeMagDecl(minmea_tocoord(&m_gga.latitude), minmea_tocoord(&m_gga.longitude),  year);
+                m_magDeclComputed = true;
+            }
+
             // Magnetic variation on full second only
-            double magVar = DegToRad(minmea_tofloat(&rmc.variation));
-            SetN2kMagneticVariation(N2kMsg, this->uc_SeqId, N2kmagvar_Calc, systemDate, magVar);
+            double magVar = DegToRad(m_magDecl);
+            SetN2kMagneticVariation(N2kMsg, this->uc_SeqId, N2kmagvar_WMM2020, systemDate, magVar);
             N2kMsg.Priority = 6;
             bool sentOk = NMEA2000.SendMsg(N2kMsg, DEV_IMU);
             m_ledBlinker.SetBusState(sentOk);
