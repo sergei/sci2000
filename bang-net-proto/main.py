@@ -1,17 +1,18 @@
 #! /usr/bin/python
 import os
-
 import matplotlib.pyplot as pl
 import matplotlib.ticker as plticker
 import numpy as np
-
 import argparse
 
 
 # Press the green button in the gutter to run the script.
+import png
+
+
 def process_capture(t, v):
 
-    thr = 0.75
+    thr = 4
     low_ind = v < thr
     v_thr = np.ones(len(v)) * 5.5
     v_thr[low_ind] = 0
@@ -90,17 +91,96 @@ def analyze_uart_capture(uart_file):
                     parse_3c(aws, awa, v)
 
 
+def analyze_bang_capture(bang_file):
+    with open(bang_file) as f:
+        epochs = []
+        epoch = {}
+        long_pending = False
+        short_pending = False
+        for line in f.readlines():
+            if line.startswith('> $IIVWR'):
+                t = line.split(',')
+                awa = int(float(t[1]))
+                if t[2] == 'L':
+                    awa = -awa
+                epoch['awa'] = awa
+                epoch['aws'] = int(float(t[3]))
+                epochs.append(epoch)
+                epoch = {}
+            elif line.startswith('B&G'):
+                tt = line.split(',')
+                if tt[2].startswith('ff 30 84 01 3c'):
+                    t_l = tt[2].split()
+                    if len(t_l) == 26:
+                        epoch['long_str'] = t_l
+                        epoch['long_bin'] = [int(x, 16) for x in t_l]
+                    else:
+                        long_pending = True
+                elif tt[2].startswith('ff 30 84 01 c4') or tt[2].startswith('ff 30 8c 01 c4'):
+                    t_s = tt[2].split()
+                    if len(t_s) == 18:
+                        epoch['short_str'] = t_l
+                        epoch['short_bin'] = [int(x, 16) for x in t_s]
+                    else:
+                        short_pending = True
+                else:
+                    t = tt[2].split()
+                    if long_pending:
+                        t_l += t
+                        if len(t_l) == 26:
+                            epoch['long_str'] = t_l
+                            epoch['long_bin'] = [int(x, 16) for x in t_l]
+                            long_pending = False
+                    elif short_pending:
+                        t_s += t
+                        if len(t_s) == 18:
+                            epoch['short_str'] = t_s
+                            epoch['short_bin'] = [int(x, 16) for x in t_s]
+                            short_pending = False
+                    else:
+                        raise Exception('Unexpected B&G line')
+
+        awa = 1000
+        aws = 1000
+        long_png_rows = []
+        bits = ''.join([str(x) for x in range(7, -1, -1)])
+        frame_type = 'short_bin'
+        hdr = ' awa, aws,' + bits * len(epochs[0][frame_type])
+        print(hdr)
+        for epoch in epochs:
+            bin_str = ['{:08b}'.format(x) for x in epoch[frame_type]]
+            frame = ''.join(bin_str)
+            print(f'{int(epoch["awa"]):04},{int(epoch["aws"]):04},{frame}')
+            png_row = [int(x) * 255 for x in frame]
+            if awa != epoch['awa']:
+                png_row = [127 for x in frame]
+                awa = epoch['awa']
+            if aws != epoch['aws']:
+                png_row = [64 for x in frame]
+                aws = epoch['aws']
+            long_png_rows.append(png_row)
+
+        f = open(frame_type + '.png', 'wb')
+        w = png.Writer(len(png_row), len(long_png_rows), greyscale=True)
+        w.write(f, long_png_rows)
+        f.close()
+
+
 def analyze_captures(args):
-    if args.cvs_dir is not None:
-        analyze_scope_capture(args.cvs_dir)
+    if args.csv_dir is not None:
+        analyze_scope_capture(args.csv_dir)
 
     if args.uart_file is not None:
         analyze_uart_capture(args.uart_file)
 
+    if args.bang_file is not None:
+        analyze_bang_capture(args.bang_file)
+
 
 if __name__ == '__main__':
     cmdparser = argparse.ArgumentParser(description="Analyze CSV captures of B&G NET protocol")
-    cmdparser.add_argument('--cvs_dir', help="File with IQ samples")
+    cmdparser.add_argument('--csv-dir', help="File with IQ samples")
     cmdparser.add_argument('--uart-file', help="File UART capture")
+    cmdparser.add_argument('--bang-file', help="File with NMEA and N&G capture")
 
     analyze_captures(cmdparser.parse_args())

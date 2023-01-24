@@ -3,7 +3,7 @@ This folder contains attempt to reverse engineer B&G Net protocol
 
 First I performed the captures on NET wire (pin 3) with a scope located in [this folder](net-captures/oscilloscope)
 it appears to be the UART protocol 9600,N,1 with levels 0 - 5V it has the opposite polarity  to NMEA output present on Pin 4
-In order to reda it with RS-232 dongle the adapter with MAX chip was used 
+In order to read it with RS-232 dongle the adapter with MAX chip was used 
 
 Once the serial data was established I performed several captures with the different values of AWA and AWS. 
 The mhu_sim was used as the input to B&G Network WIND instrument. The serial captures are located in [this folder](net-captures/rs-232)
