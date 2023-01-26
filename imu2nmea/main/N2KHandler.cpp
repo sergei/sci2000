@@ -167,7 +167,7 @@ void N2KHandler::Start() {
         if ( s_AttScheduler.IsTime() ) {
             s_AttScheduler.UpdateNextTime();
 
-            double localYawRad = 0;  // Not quite sure what it's supposed to be referenced to. Let's assume heading, so it's always 0
+            double localYawRad = N2kDoubleNA;  // Not quite sure what it's supposed to be referenced to. Just don't send it
             double localRollRad = isImuValid ? DegToRad(roll) : N2kDoubleNA;
             double localPitchRad = isImuValid ? DegToRad(pitch) : N2kDoubleNA;
 
