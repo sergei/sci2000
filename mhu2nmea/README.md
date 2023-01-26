@@ -13,7 +13,26 @@ The CLion instructions are taken from this [page](https://www.jetbrains.com/help
   * Wind Angle Phase (Green) - Analog input B of [Engine to Hat](https://docs.hatlabs.fi/sh-esp32/pages/add-ons/engine-hat/) - CH1 of AD115 ADC
   * Wind Angle Phase (Blue) - Analog input C of [Engine to Hat](https://docs.hatlabs.fi/sh-esp32/pages/add-ons/engine-hat/)  - CH2 of AD115 ADC
   * Wind Speed Signal (Violet) -  OPTO_IN (GPIO 35)
-      
+
+### Connectors
+
+#### Power connector
+  1 - GND (Blue)
+  2 - +12 V (Red)
+### Speed sensor
+  1 - GND  (Black)
+  2 - +12 V (Red)
+  3 - Speed pulse (Yellow)
+  4..6 N/C
+### Wind sensor
+  1 - GND (Black)
+  2 - +12 V (Orange) 
+  3 - Speed pulse (Purple)      
+  4 - N/C
+  5 - Wind angle phase (red)
+  6 - Wind angle phase (blue)
+  7 - Wind angle phase (green)
+
 ## Software 
 ### The AWA 
   The AWA inputs are connected to  [AD115 ADC](doc/ads1115.pdf) the I2C address is set to 0x4b (default on Top Hat)

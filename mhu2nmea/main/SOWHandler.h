@@ -5,6 +5,7 @@
 #include "freertos/queue.h"
 #include "CNTHandler.h"
 
+static const float  PW_HERTZ_PER_KTS =  4.0; // Hz/Kt
 class SOWHandler  : public CounterHandler {
 public:
     explicit SOWHandler(const xQueueHandle &dataQueue);

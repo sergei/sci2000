@@ -8,11 +8,11 @@ SOWHandler::SOWHandler(QueueHandle_t const &dataQueue)
 }
 
 void SOWHandler::onCounted(bool isValid, float Hz) {
-    // Now post the value to the central data queue
+    float speedKts = Hz / PW_HERTZ_PER_KTS;
     Event dataEvt = {
             .src = SOW,
             .isValid = isValid,
-            .u = {.fValue = Hz}  // FIXME convert to KTS
+            .u = {.fValue = speedKts}
     };
     xQueueSend(m_dataQueue, &dataEvt, 0);
 }
