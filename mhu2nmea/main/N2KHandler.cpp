@@ -34,7 +34,7 @@ N2KHandler::N2KHandler(const xQueueHandle &evtQueue, LEDBlinker &ledBlinker)
     , m_ledBlinker(ledBlinker)
     , m_MhuCalGroupFunctionHandler(*this, &NMEA2000)
     , m_BoatSpeedCalGroupFunctionHandler(*this, &NMEA2000)
-    , m_busListener(evtQueue)
+    , m_busListener(evtQueue, ledBlinker)
 {
 }
 
@@ -189,7 +189,7 @@ void N2KHandler::StartTask() {
             SetN2kWindSpeed(N2kMsg, this->uc_WindSeqId++, localAwsMs, localAwaRad, windRef );
             N2kMsg.Priority = DEFAULT_WIND_PRIO;
             bool sentOk = NMEA2000.SendMsg(N2kMsg, DEV_MHU);
-            ESP_LOGI(TAG, "SetN2kWindSpeed AWS=%.0f AWA=%.1f ref=%d %s", msToKnots(localAwsMs), RadToDeg(localAwaRad), windRef, sentOk ? "OK" : "Failed");
+            ESP_LOGD(TAG, "SetN2kWindSpeed AWS=%.0f AWA=%.1f ref=%d %s", msToKnots(localAwsMs), RadToDeg(localAwaRad), windRef, sentOk ? "OK" : "Failed");
             m_ledBlinker.SetBusState(sentOk);
         }
 
@@ -201,7 +201,7 @@ void N2KHandler::StartTask() {
             SetN2kBoatSpeed(N2kMsg, this->uc_BoatSpeedSeqId++, boatSpeed, N2kDoubleNA, N2kSWRT_Paddle_wheel );
             N2kMsg.Priority = DEFAULT_SPEED_PRIO;
             bool sentOk = NMEA2000.SendMsg(N2kMsg, DEV_SPEED);
-            ESP_LOGI(TAG, "SetN2kBoatSpeed SOW=%.0f %s", msToKnots(boatSpeed), sentOk ? "OK" : "Failed");
+            ESP_LOGD(TAG, "SetN2kBoatSpeed SOW=%.0f %s", msToKnots(boatSpeed), sentOk ? "OK" : "Failed");
             m_ledBlinker.SetBusState(sentOk);
         }
 
@@ -218,15 +218,18 @@ void N2KHandler::OnOpen() {
     s_WaterScheduler.UpdateNextTime();
 }
 
-N2KTwaiBusAlertListener::N2KTwaiBusAlertListener(QueueHandle_t const &evtQueue)
+N2KTwaiBusAlertListener::N2KTwaiBusAlertListener(QueueHandle_t const &evtQueue, LEDBlinker &ledBlinker)
         :m_evtQueue(evtQueue)
+        ,m_ledBlinker(ledBlinker)
 {
 }
 
 void N2KTwaiBusAlertListener::onAlert(uint32_t alerts, bool isError) {
     if ( isError ){
         ESP_LOGE(TAG, "CAN driver error");
+        m_ledBlinker.SetBusState(false);
     }else{
+        m_ledBlinker.SetBusState(true);
         // CAN bus available, crank the N2K FSM
         Event evt = {
                 .src = CAN_DRIVER_EVENT,

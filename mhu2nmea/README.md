@@ -20,9 +20,9 @@ The CLion instructions are taken from this [page](https://www.jetbrains.com/help
   1 - GND (Blue)
   2 - +12 V (Red)
 ### Speed sensor
-  1 - GND  (Black)
+  1 - GND  (Blue)
   2 - +12 V (Red)
-  3 - Speed pulse (Yellow)
+  3 - Speed pulse (Green)
   4..6 N/C
 ### Wind sensor
   1 - GND (Black)

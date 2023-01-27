@@ -18,10 +18,12 @@
 
 class N2KTwaiBusAlertListener: public TwaiBusAlertListener{
 public:
-    explicit N2KTwaiBusAlertListener(const xQueueHandle &evtQueue);
+    explicit N2KTwaiBusAlertListener(const xQueueHandle &evtQueue, LEDBlinker &ledBlinker);
     void onAlert(uint32_t alerts, bool isError) override ;
 private:
     const xQueueHandle &m_evtQueue;
+    LEDBlinker &m_ledBlinker;
+
 };
 
 

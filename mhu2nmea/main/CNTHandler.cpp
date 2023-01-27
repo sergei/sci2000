@@ -119,7 +119,7 @@ float CNTHandler::convertToHz(const pcnt_evt_t &evt, int16_t pulsesPerInterrupt)
     if (evt.status & PCNT_EVT_H_LIM) {
         // Convert to knots
         float freqHz = 1.f / (float)(evt.elapsed_us) * 1000000.f * (float)pulsesPerInterrupt;
-        ESP_LOGI(TAG, "H_LIM EVT unit=%d elapsed time=%lld us ppi=%d f=%.3fHz" ,evt.unit, evt.elapsed_us, pulsesPerInterrupt, freqHz);
+        ESP_LOGD(TAG, "H_LIM EVT unit=%d elapsed time=%lld us ppi=%d f=%.3fHz" ,evt.unit, evt.elapsed_us, pulsesPerInterrupt, freqHz);
         return freqHz;
     }
 

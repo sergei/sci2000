@@ -30,7 +30,7 @@ N2KHandler::N2KHandler(const xQueueHandle &evtQueue, LEDBlinker &ledBlinker)
     :m_evtQueue(evtQueue)
     ,m_ledBlinker(ledBlinker)
     ,m_imuCalGroupFunctionHandler(*this, &NMEA2000)
-    ,m_busListener(evtQueue)
+    ,m_busListener(evtQueue, ledBlinker)
 {
 }
 
@@ -273,15 +273,18 @@ void N2KHandler::OnOpen() {
     s_AttScheduler.UpdateNextTime();
 }
 
-N2KTwaiBusAlertListener::N2KTwaiBusAlertListener(QueueHandle_t const &evtQueue)
+N2KTwaiBusAlertListener::N2KTwaiBusAlertListener(QueueHandle_t const &evtQueue, LEDBlinker &ledBlinker)
         :m_evtQueue(evtQueue)
+        ,m_ledBlinker(ledBlinker)
 {
 }
 
 void N2KTwaiBusAlertListener::onAlert(uint32_t alerts, bool isError) {
     if ( isError ){
         ESP_LOGE(TAG, "CAN driver error");
+        m_ledBlinker.SetBusState(false);
     }else{
+        m_ledBlinker.SetBusState(true);
         // CAN bus available, crank the N2K FSM
         Event evt = {
                 .src = CAN_DRIVER_EVENT,
