@@ -5,6 +5,7 @@
 #include "freertos/queue.h"
 #include "CNTHandler.h"
 
+
 class AWSHandler : public CounterHandler {
 public:
     explicit AWSHandler(const xQueueHandle &dataQueue);
@@ -12,6 +13,12 @@ public:
 
 private:
     const xQueueHandle &m_dataQueue;
+// Factors to convert from Hz to KTS
+// See https://github.com/sergei/sci2000/issues/2 for details
+    constexpr static const float AWS_A0 = 0.99096;  // Intersection
+    constexpr static const float AWS_B0 = 0.96745;  // Slope
+    constexpr static const float AWS_THR_HZ = 0.04; // Show 0 kts if frequency below this value
+
 };
 
 

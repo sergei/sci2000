@@ -69,22 +69,29 @@ bool AWAHandler::pollAwa(float &awaRad) {
 
         // Estimate amplitude
         float est_a = (red + green + blue) / 3;
+        ESP_LOGD(TAG, "AWA Amplitude=%.1f" , est_a);
 
-        // Scale to range [-1; 1]
-        float est_red_u = red / est_a - 1;
-        float est_green_u = green / est_a - 1;
-        float est_blue_u = blue / est_a - 1;
+        if ( est_a > 100 ){
+            // Scale to range [-1; 1]
+            float est_red_u = red / est_a - 1;
+            float est_green_u = green / est_a - 1;
+            float est_blue_u = blue / est_a - 1;
 
-        float angle;
-        if (est_green_u < 0 && est_blue_u >= 0)
-            angle = acos(-est_red_u);
-        else if(est_blue_u < 0 && est_red_u >= 0)
-            angle = asin(est_green_u) + 7 * M_PI / 6;
-        else
-            angle = asin(est_blue_u) + 11 * M_PI / 6;
+            float angle;
+            if (est_green_u < 0 && est_blue_u >= 0)
+                angle = acos(-est_red_u);
+            else if(est_blue_u < 0 && est_red_u >= 0)
+                angle = asin(est_green_u) + 7 * M_PI / 6;
+            else
+                angle = asin(est_blue_u) + 11 * M_PI / 6;
 
-        awaRad = fmod(angle, 2 * M_PI);
-        return true;
+            awaRad = fmod(angle, 2 * M_PI);
+            return true;
+        }
+        else{
+            ESP_LOGE(TAG, "AWA A=%.1f too low", est_a);
+            return false; // Apparently sensor is not connected
+        }
     }
 
     return false;
@@ -102,7 +109,7 @@ bool AWAHandler::pollAwa(float &awaRad) {
             .u { .fValue = awa }
         };
         xQueueSend(eventQueue, &evt, 0);
-        vTaskDelay(1000 / portTICK_PERIOD_MS); // 500 mS
+        vTaskDelay(100 / portTICK_PERIOD_MS); // 100 mS
     }
 }
 
