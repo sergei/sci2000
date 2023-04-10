@@ -219,16 +219,20 @@ void N2KHandler::transmitGpsData(const minmea_sentence_rmc &rmc)  {
 
     if(minmea_gettime(&ts, &rmc.date, &rmc.time) == 0 ) {
         wholeSecFrame = ts.tv_nsec == 0;
-
-        if ( wholeSecFrame ) {  // Send time only on integer seconds
-            systemDate = ts.tv_sec / SEC_IN_DAY; // Days since 1970-01-01
-            double systemTime = fmod(ts.tv_sec + ts.tv_nsec * 1.e-9, SEC_IN_DAY);
-            SetN2kSystemTime(N2kMsg, this->uc_SeqId, systemDate, systemTime);
-            bool sentOk = NMEA2000.SendMsg(N2kMsg, DEV_IMU);
-            m_ledBlinker.SetBusState(sentOk);
-            ESP_LOGD(TAG, "SetN2kSystemTime date=%d time=%.3f  %s", systemDate, systemTime, sentOk ? "OK" : "Failed");
-        }
+        systemDate = ts.tv_sec / SEC_IN_DAY; // Days since 1970-01-01
+        double systemTime = fmod(ts.tv_sec + ts.tv_nsec * 1.e-9, SEC_IN_DAY);
+        SetN2kSystemTime(N2kMsg, this->uc_SeqId, systemDate, systemTime);
+        bool sentOk = NMEA2000.SendMsg(N2kMsg, DEV_IMU);
+        m_ledBlinker.SetBusState(sentOk);
+        ESP_LOGD(TAG, "SetN2kSystemTime date=%d time=%.3f  %s", systemDate, systemTime, sentOk ? "OK" : "Failed");
     }
+
+    double cog = rmc.valid ? DegToRad(minmea_tofloat(&rmc.course)) : N2kDoubleNA;
+    double sog = rmc.valid ? KnotsToms(minmea_tofloat(&rmc.speed)): N2kDoubleNA;
+    SetN2kCOGSOGRapid(N2kMsg, this->uc_SeqId, N2khr_true, cog, sog);
+    bool sentOk = NMEA2000.SendMsg(N2kMsg, DEV_IMU);
+    m_ledBlinker.SetBusState(sentOk);
+    ESP_LOGD(TAG, "SetN2kCOGSOGRapid cog=%.5f sog=%.5f  %s", cog, sog, sentOk ? "OK" : "Failed");
 
     if ( wholeSecFrame ){  // Send full GPS data
         transmitFullGpsData(m_gga, systemDate);
@@ -243,7 +247,7 @@ void N2KHandler::transmitGpsData(const minmea_sentence_rmc &rmc)  {
             double magVar = DegToRad(m_magDecl);
             SetN2kMagneticVariation(N2kMsg, this->uc_SeqId, N2kmagvar_WMM2020, systemDate, magVar);
             N2kMsg.Priority = 6;
-            bool sentOk = NMEA2000.SendMsg(N2kMsg, DEV_IMU);
+            sentOk = NMEA2000.SendMsg(N2kMsg, DEV_IMU);
             m_ledBlinker.SetBusState(sentOk);
             ESP_LOGD(TAG, "SetN2kMagneticVariation var=%.5f %s", magVar, sentOk ? "OK" : "Failed");
         }
@@ -251,16 +255,9 @@ void N2KHandler::transmitGpsData(const minmea_sentence_rmc &rmc)  {
         double latitude = rmc.valid ? minmea_tocoord(&rmc.latitude) : N2kDoubleNA;
         double longitude = rmc.valid ? minmea_tocoord(&rmc.longitude) : N2kDoubleNA;
         SetN2kLatLonRapid(N2kMsg, latitude, longitude);
-        bool sentOk = NMEA2000.SendMsg(N2kMsg, DEV_IMU);
-        m_ledBlinker.SetBusState(sentOk);
-        ESP_LOGD(TAG, "SetN2kLatLonRapid lat=%.5f time=%.5f  %s", latitude, longitude, sentOk ? "OK" : "Failed");
-
-        double cog = rmc.valid ? DegToRad(minmea_tofloat(&rmc.course)) : N2kDoubleNA;
-        double sog = rmc.valid ? KnotsToms(minmea_tofloat(&rmc.speed)): N2kDoubleNA;
-        SetN2kCOGSOGRapid(N2kMsg, this->uc_SeqId, N2khr_true, cog, sog);
         sentOk = NMEA2000.SendMsg(N2kMsg, DEV_IMU);
         m_ledBlinker.SetBusState(sentOk);
-        ESP_LOGD(TAG, "SetN2kLatLonRapid cog=%.5f sog=%.5f  %s", cog, sog, sentOk ? "OK" : "Failed");
+        ESP_LOGD(TAG, "SetN2kLatLonRapid lat=%.5f time=%.5f  %s", latitude, longitude, sentOk ? "OK" : "Failed");
     }
 
 }
