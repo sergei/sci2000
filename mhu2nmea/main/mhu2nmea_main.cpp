@@ -31,8 +31,12 @@ CNTHandler cntHandler;
 AWSHandler awsHandler(evt_queue);
 SOWHandler sowHandler(evt_queue);
 
+static const char *TAG = "mhu2nmea_main";
+
 extern "C" [[noreturn]] void app_main(void)
 {
+    ESP_LOGE(TAG,"Git hash:%s",GIT_HASH);
+
     // Initialize event queue
     evt_queue = xQueueCreate(10, sizeof(Event));
 

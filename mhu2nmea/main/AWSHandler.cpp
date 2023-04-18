@@ -1,7 +1,8 @@
 #include "AWSHandler.h"
 
 AWSHandler::AWSHandler(QueueHandle_t const &dataQueue)
-        :m_dataQueue(dataQueue)
+:CounterHandler("AWS",AWS_CUTOFF_FREQ_HZ)
+,m_dataQueue(dataQueue)
 {
 
 }

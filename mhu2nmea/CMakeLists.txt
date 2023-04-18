@@ -8,5 +8,13 @@ set(EXTRA_COMPONENT_DIRS
         ../idf-components
         )
 
+execute_process(
+        COMMAND git rev-parse --short HEAD
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        OUTPUT_VARIABLE GIT_HASH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+add_definitions("-DGIT_HASH=\"${GIT_HASH}\"")
+
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(mhu2nmea)

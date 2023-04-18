@@ -2,7 +2,8 @@
 
 
 SOWHandler::SOWHandler(QueueHandle_t const &dataQueue)
-        :m_dataQueue(dataQueue)
+        :CounterHandler("SOW",SPD_CUTOFF_FREQ_HZ)
+        ,m_dataQueue(dataQueue)
 {
 
 }

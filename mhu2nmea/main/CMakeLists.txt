@@ -8,6 +8,7 @@ idf_component_register(
         CNTHandler.cpp
         CalibrationStorage.cpp
         LEDBlinker.cpp
+        LowPassFilter.cpp
     INCLUDE_DIRS
         ""
 )

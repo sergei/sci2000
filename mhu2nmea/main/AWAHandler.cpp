@@ -63,15 +63,21 @@ bool AWAHandler::Poll(int16_t *data, int chanNum) {
 bool AWAHandler::pollAwa(float &awaRad) {
     int16_t adc_data[4];
     if ( Poll(adc_data, 3) ) {
+
         auto red = (float) adc_data[0];
         auto green = (float) adc_data[1];
         auto blue = (float) adc_data[2];
 
         // Estimate amplitude
-        float est_a = (red + green + blue) / 3;
-        ESP_LOGD(TAG, "AWA Amplitude=%.1f" , est_a);
+        float raw_a = (red + green + blue) / 3;
 
-        if ( est_a > 100 ){
+        if ( raw_a > 100 ){
+            // Compute time since last poll
+            int64_t now_us = esp_timer_get_time();
+            auto dt_sec = ((float)(now_us - last_awa_poll_time_us) / 1000000.0f);
+            last_awa_poll_time_us = now_us;
+
+            float est_a = this->m_amplitudeFilter.filter(raw_a, dt_sec);
             // Scale to range [-1; 1]
             float est_red_u = red / est_a - 1;
             float est_green_u = green / est_a - 1;
@@ -79,17 +85,20 @@ bool AWAHandler::pollAwa(float &awaRad) {
 
             float angle;
             if (est_green_u < 0 && est_blue_u >= 0)
-                angle = acos(-est_red_u);
+                angle = std::acos(-est_red_u);
             else if(est_blue_u < 0 && est_red_u >= 0)
-                angle = asin(est_green_u) + 7 * M_PI / 6;
+                angle = std::asin(est_green_u) + 7.f * (float)M_PI / 6.f;
             else
-                angle = asin(est_blue_u) + 11 * M_PI / 6;
+                angle = std::asin(est_blue_u) + 11.f * (float)M_PI / 6.f;
 
-            awaRad = fmod(angle, 2 * M_PI);
+            auto raw_awa_rad = (float)fmod(angle, M_TWOPI);
+            awaRad = this->m_awaFilter.filterAngle(raw_awa_rad, dt_sec);
+            ESP_LOGI(TAG, "AWA,dt_sec,%.3f,raw_a,%.1f,est_a,%.1f,r,%.2f,g,%.2f,b,%.2f,raw_awa,%.1f,est_awa,%.1f",
+                     dt_sec, raw_a, est_a, est_red_u, est_green_u, est_blue_u, RAD_2_DEG(raw_awa_rad), RAD_2_DEG(awaRad));
             return true;
         }
         else{
-            ESP_LOGE(TAG, "AWA A=%.1f too low", est_a);
+            ESP_LOGE(TAG, "AWA,dt_sec,,raw_a,%.1f,est_a,,r,,g,,b,,raw_awa,,est_awa,", raw_a);
             return false; // Apparently sensor is not connected
         }
     }

@@ -139,7 +139,7 @@ float CNTHandler::convertToHz(const pcnt_evt_t &evt, int16_t pulsesPerInterrupt)
         if (res == pdTRUE) {
             hz = convertToHz(evt, m_pulsesPerInterrupt[unit]);
         }
-        m_CtrHandlers[unit]->onCounted(res == pdTRUE, hz);
+        m_CtrHandlers[unit]->report(res == pdTRUE, hz);
     }
 
 }
@@ -159,4 +159,21 @@ bool CNTHandler::AddCounterHandler(CounterHandler *handler, int pulseGpioNum, in
         return false;
     }
 
+}
+
+void CounterHandler::report(bool isValid, float raw_hz) {
+    float filtered_hz = 0.f;
+    if ( isValid ){
+        // Compute time since last poll
+        int64_t now_us = esp_timer_get_time();
+        auto dt_sec = ((float)(now_us - last_poll_time_us) / 1000000.0f);
+        last_poll_time_us = now_us;
+
+        // Filter the raw frequency
+        filtered_hz = m_lpf.filter(raw_hz, dt_sec);
+        ESP_LOGI(TAG,"%s,dt_sec,%.3f,raw_hz,%.2f,hz,%.2f", m_name, dt_sec, raw_hz, filtered_hz);
+    }else{
+        ESP_LOGE(TAG,"%s,dt_sec,,raw_hz,,hz,", m_name);
+    }
+    onCounted(isValid, filtered_hz);
 }

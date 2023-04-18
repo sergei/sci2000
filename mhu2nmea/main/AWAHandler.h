@@ -3,8 +3,12 @@
 
 #include "ads111x.h"
 #include "Event.hpp"
+#include "LowPassFilter.h"
 
-static const float NOMINAL_AMPLITUDE = 2471;  // Measured ADC output with lab supply set to 6.4 V
+#define RAD_2_DEG(x) ((x) * 180.0 / M_PI)
+
+static const float MHU_AMPL_CUTOFF_FREQ_HZ = 0.1f;  // Amplitude is not supposed to change fast
+static const float AWA_CUTOFF_FREQ_HZ = 5.f;  // Set filter to match reporting rate
 
 class AWAHandler {
 public:
@@ -17,8 +21,10 @@ private:
     bool pollAwa(float &awaRad);
     bool Poll(int16_t data[], int chanNum);
     i2c_dev_t dev;
-    float m_filteredAmplitude = NOMINAL_AMPLITUDE;
     const xQueueHandle &eventQueue;
+    LowPassFilter m_amplitudeFilter = LowPassFilter(MHU_AMPL_CUTOFF_FREQ_HZ);
+    LowPassFilter m_awaFilter = LowPassFilter(AWA_CUTOFF_FREQ_HZ);
+    int64_t last_awa_poll_time_us = esp_timer_get_time();
 };
 
 

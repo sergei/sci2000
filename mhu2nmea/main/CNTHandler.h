@@ -4,13 +4,22 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include <driver/pcnt.h>
+#include <esp_log.h>
 
 #include "Event.hpp"
+#include "LowPassFilter.h"
 
 
 class CounterHandler{
 public:
-    virtual void onCounted(bool isValid, float Hz) = 0;
+    explicit CounterHandler(const char *name, float lpf_cutoff_frequency)
+        :m_name(name),m_lpf(lpf_cutoff_frequency){}
+    virtual void onCounted(bool isValid, float filtered_hz) = 0;
+    virtual void report(bool isValid, float raw_hz);
+private:
+    const char *m_name;
+    LowPassFilter m_lpf;
+    int64_t last_poll_time_us = esp_timer_get_time();
 };
 
 typedef struct {
