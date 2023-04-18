@@ -33,7 +33,7 @@ static const int MHU_PR_CODE = 130;
 static const char *const MHU_MODEL_ID = "SCI MHU->N2K";
 static const int SPEED_PR_CODE = 131;
 static const char *const SPEED_MODEL_ID = "SCI Speed->N2K";
-static const char *const MFG_SW_VERSION = "1.0.0.0 (2022-12-07)";
+static const char *const MFG_SW_VERSION = GIT_HASH;
 static const char *const MFG_MODEL_VER = "1.0.0.0 (2022-12-07)";
 
 static const unsigned long MHU_CALIBRATION_PGN = 130900;  // Set/get MHU calibration
