@@ -6,7 +6,7 @@
 #include "CNTHandler.h"
 #include "LowPassFilter.h"
 
-static const float AWS_CUTOFF_FREQ_HZ = 5.f;  // Set filter to match reporting rate
+static const float AWS_CUTOFF_FREQ_HZ = 1.f;  // Hertz
 
 class AWSHandler : public CounterHandler {
 public:
