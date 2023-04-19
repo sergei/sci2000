@@ -216,7 +216,7 @@ void GpsParser::printHex(const uint8_t *buff, size_t size) {
 }
 
 void GpsParser::ParseNmea0183Line(const char *lineToParse) {
-    ESP_LOGI(TAG, "[%s]", lineToParse);
+//    ESP_LOGI(TAG, "[%s]", lineToParse);
 
     switch (minmea_sentence_id(lineToParse, false)) {
         case MINMEA_SENTENCE_RMC: {

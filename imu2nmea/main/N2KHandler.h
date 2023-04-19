@@ -65,6 +65,7 @@ static const unsigned char  DEFAULT_ATTITUDE_TX_PRIO = 3;
 
 static const int SEC_IN_DAY = 24 * 60 * 60;
 
+static const int JAVELIN_COMPASS_MOUNT_OFFSET = 90; // experimental value after installation on Javelin
 
 class N2KHandler {
 

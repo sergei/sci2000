@@ -116,7 +116,7 @@ void N2KHandler::Start() {
         if (res == pdTRUE) {
             switch (evt.src) {
                 case IMU:
-                    hdg = (float)(evt.u.imu.hdg + RadToDeg(m_hdgCorrRad));
+                    hdg = (float)(evt.u.imu.hdg + RadToDeg(m_hdgCorrRad)) - JAVELIN_COMPASS_MOUNT_OFFSET;
                     pitch = (float)(evt.u.imu.pitch + RadToDeg(m_pitchCorrRad));
                     roll = (float)(evt.u.imu.roll + RadToDeg(m_rollCorrRad));
                     isImuValid = evt.isValid;
