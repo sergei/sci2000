@@ -116,9 +116,11 @@ void N2KHandler::Start() {
         if (res == pdTRUE) {
             switch (evt.src) {
                 case IMU:
-                    hdg = (float)(evt.u.imu.hdg + RadToDeg(m_hdgCorrRad)) - JAVELIN_COMPASS_MOUNT_OFFSET;
-                    pitch = (float)(evt.u.imu.pitch + RadToDeg(m_pitchCorrRad));
-                    roll = (float)(evt.u.imu.roll + RadToDeg(m_rollCorrRad));
+                    hdg = NormalizeDeg360((evt.u.imu.hdg + RadToDeg(m_hdgCorrRad)) - JAVELIN_COMPASS_MOUNT_OFFSET);
+                    // NB Swap pitch and roll to match the way device mounted on Javelin bulkhead
+                    // Roll must be positive when tilted right
+                    roll = - NormalizeDeg180(evt.u.imu.pitch + RadToDeg(m_pitchCorrRad));
+                    pitch = NormalizeDeg180(evt.u.imu.roll + RadToDeg(m_rollCorrRad));
                     isImuValid = evt.isValid;
                     if( isImuValid ){
                         imuUpdateTime = esp_timer_get_time();
@@ -311,6 +313,18 @@ bool N2KHandler::SendImuCalValues() {
     return NMEA2000.SendMsg(N2kMsg, DEV_IMU);
 }
 
+float N2KHandler::NormalizeDeg360(double deg) {
+    while (deg < 0) deg += 360.f;
+    while (deg >= 360) deg -= 360.f;
+
+    return (float)deg;
+}
+
+float N2KHandler::NormalizeDeg180(double deg) {
+    deg = NormalizeDeg360(deg);
+    if (deg > 180) deg -= 360.f;
+    return (float)deg;
+}
 
 bool N2KHandler::ImuCalGroupFunctionHandler::ProcessRequest(const tN2kMsg &N2kMsg, uint32_t TransmissionInterval,
                                                             uint16_t TransmissionIntervalOffset,

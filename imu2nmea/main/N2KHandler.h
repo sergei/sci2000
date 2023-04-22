@@ -33,8 +33,8 @@ static const uint16_t SCI_IND_MFG_CODE = (SCI_INDUSTRY_CODE << 13) | (0x03 << 11
 
 static const int IMU_PR_CODE = 132;
 static const char *const MHU_MODEL_ID = "SCI IMU->N2K";
-static const char *const MFG_SW_VERSION = "1.0.0.0 (2022-12-07)";
-static const char *const MFG_MODEL_VER = "1.0.0.0 (2022-12-07)";
+static const char *const MFG_SW_VERSION = GIT_HASH;
+static const char *const MFG_MODEL_VER = "1.0.0.0 (2023-04-01)";
 enum {
     DEV_IMU,
     DEV_NUM
@@ -57,7 +57,7 @@ static const int IMU_TOUT = 10 * 1000000;
 //static const int DEFAULT_IMU_TX_RATE = 200;
 static const int TWAI_TX_QUEUE_LEN = 20;
 
-static const int DEFAULT_HDG_TX_RATE = 100;
+static const int DEFAULT_HDG_TX_RATE = 200;
 static const unsigned char  DEFAULT_HDG_TX_PRIO = 2;
 
 static const int DEFAULT_ATTITUDE_TX_RATE = 1000;
@@ -135,6 +135,10 @@ private:
 
     void transmitGpsData(const minmea_sentence_rmc &rmc) ;
     void transmitFullGpsData(minmea_sentence_gga gga, uint16_t DaysSince1970);
+
+    static float NormalizeDeg360(double deg);
+
+    static float NormalizeDeg180(double deg);
 };
 
 

@@ -19,8 +19,12 @@ IMUHandler imuHandler(evt_queue, SDA_IO_NUM, SCL_IO_NUM, CMPS12_i2C_ADDR);
 N2KHandler n2KHandler(evt_queue, ledBlinker);
 GPSHandler gpsHandler(evt_queue, 15, 13);
 
+static const char *TAG = "imu2nmea_main";
+
 extern "C" [[noreturn]] void app_main(void)
 {
+    ESP_LOGE(TAG,"Git hash:%s",GIT_HASH);
+
     // Initialize event queue
     evt_queue = xQueueCreate(10, sizeof(Event));
     ledBlinker.Start();
