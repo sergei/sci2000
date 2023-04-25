@@ -2,6 +2,7 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$/.." vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../idf-components/NMEA2000_esp32_twai" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/components/minmea" vcs="Git" />
   </component>
 </project>
