@@ -139,7 +139,9 @@ float CNTHandler::convertToHz(const pcnt_evt_t &evt, int16_t pulsesPerInterrupt)
         if (res == pdTRUE) {
             hz = convertToHz(evt, m_pulsesPerInterrupt[unit]);
         }
-        m_CtrHandlers[unit]->report(res == pdTRUE, hz);
+        // Report valid measurement of 0 Hz even if no pulses were detected. Otherwise we see -- on the screen
+        // TODO maybe we can read voltage and deside if it's properly connected?
+        m_CtrHandlers[unit]->report(true, hz);
     }
 
 }
