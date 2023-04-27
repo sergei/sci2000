@@ -132,6 +132,10 @@ private:
     /// Send PGN SPEED_CALIBRATION_PGN
     static bool SendBoatSpeedCalValues();
 
+    static float NormalizeRadTWOPI(double rad);
+
+    static float NormalizeRadPI(double rad);
+
     const xQueueHandle &m_evtQueue;
     LEDBlinker &m_ledBlinker;
     MhuCalGroupFunctionHandler m_MhuCalGroupFunctionHandler;

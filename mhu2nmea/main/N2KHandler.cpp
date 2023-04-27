@@ -160,7 +160,7 @@ void N2KHandler::StartTask() {
                     }
                     break;
                 case AWA:
-                    awaRad = evt.u.fValue + m_awaCorrRad;
+                    awaRad = NormalizeRadPI(evt.u.fValue + m_awaCorrRad);
                     isAwaValid = evt.isValid;
                     if ( isAwaValid ){
                         awaUpdateTime = esp_timer_get_time();
@@ -335,4 +335,17 @@ bool N2KHandler::BoatSpeedCalGroupFunctionHandler::ProcessCommand(const tN2kMsg 
     }
 
     return true;
+}
+
+float N2KHandler::NormalizeRadTWOPI(double rad) {
+    while (rad < 0) rad += M_TWOPI;
+    while (rad >= M_TWOPI) rad -= M_TWOPI;
+
+    return (float)rad;
+}
+
+float N2KHandler::NormalizeRadPI(double rad) {
+    rad = NormalizeRadTWOPI(rad);
+    if (rad > M_PI) rad -= M_TWOPI;
+    return (float)rad;
 }
