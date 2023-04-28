@@ -9,6 +9,7 @@ idf_component_register(
         CalibrationStorage.cpp
         LEDBlinker.cpp
         LowPassFilter.cpp
+        TrueWindComputer.cpp
     INCLUDE_DIRS
         ""
 )
