@@ -134,8 +134,6 @@ private:
 
     static float NormalizeRadTWOPI(double rad);
 
-    static float NormalizeRadPI(double rad);
-
     const xQueueHandle &m_evtQueue;
     LEDBlinker &m_ledBlinker;
     MhuCalGroupFunctionHandler m_MhuCalGroupFunctionHandler;

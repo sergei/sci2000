@@ -31,8 +31,8 @@ bool TrueWindComputer::computeTrueWind(float spd, float aws, float awaRad, float
         alpha = acos( r );
 
         // Put TWA to the same tack as AWA
-        if ( beta < 0 )
-            alpha = - alpha;
+        if ( beta > M_PI )
+            alpha = M_TWOPI - alpha;
     }
     else if ( W < 0. ) // Nonsense input data
     {
