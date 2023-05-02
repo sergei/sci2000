@@ -15,8 +15,8 @@
 
 #endif
 
-#define WIND_SPEED_PULSE_IO 13 // MHU wind speed pulse - DI1
-#define WATER_SPEED_PULSE_IO 15  // Paddle wheel pulse - DI2
+#define WIND_SPEED_PULSE_IO 13 // MHU wind speed pulse - DI2
+#define WATER_SPEED_PULSE_IO 15  // Paddle wheel pulse - DI1
 
 xQueueHandle evt_queue;   // A queue to handle  send events from sensors to N2K
 
@@ -43,9 +43,9 @@ extern "C" [[noreturn]] void app_main(void)
     ledBlinker.Start();
 
     // Start NMEA 2000 task
-    N2Khandler.StartTask();
+//    N2Khandler.StartTask();
 
-    cntHandler.AddCounterHandler(&awsHandler, WIND_SPEED_PULSE_IO, 4);
+    cntHandler.AddCounterHandler(&awsHandler, WIND_SPEED_PULSE_IO, 1 );
     cntHandler.AddCounterHandler(&sowHandler, WATER_SPEED_PULSE_IO, 4);
 
 #ifdef HAS_ADC
