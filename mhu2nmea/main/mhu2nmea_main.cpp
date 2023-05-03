@@ -43,10 +43,10 @@ extern "C" [[noreturn]] void app_main(void)
     ledBlinker.Start();
 
     // Start NMEA 2000 task
-//    N2Khandler.StartTask();
+    N2Khandler.StartTask();
 
-    cntHandler.AddCounterHandler(&awsHandler, WIND_SPEED_PULSE_IO, 1 );
-    cntHandler.AddCounterHandler(&sowHandler, WATER_SPEED_PULSE_IO, 4);
+    cntHandler.AddCounterHandler(&awsHandler, WIND_SPEED_PULSE_IO, 4,  GPIO_FLOATING);
+    cntHandler.AddCounterHandler(&sowHandler, WATER_SPEED_PULSE_IO, 4, GPIO_FLOATING);
 
 #ifdef HAS_ADC
     AWAhandler.StartTask();
