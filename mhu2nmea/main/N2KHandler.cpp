@@ -6,6 +6,7 @@
 #include "Event.hpp"
 #include "CalibrationStorage.h"
 #include "LEDBlinker.h"
+#include "TrueWindComputer.h"
 
 NMEA2000_esp32_twai NMEA2000(ESP32_CAN_TX_PIN, ESP32_CAN_RX_PIN, TWAI_MODE_NORMAL);
 
@@ -160,7 +161,7 @@ void N2KHandler::StartTask() {
                     }
                     break;
                 case AWA:
-                    awaRad = evt.u.fValue + m_awaCorrRad;
+                    awaRad = NormalizeRadTWOPI(evt.u.fValue + m_awaCorrRad);
                     isAwaValid = evt.isValid;
                     if ( isAwaValid ){
                         awaUpdateTime = esp_timer_get_time();
@@ -181,16 +182,38 @@ void N2KHandler::StartTask() {
         if ( s_WindScheduler.IsTime() ) {
             s_WindScheduler.UpdateNextTime();
 
+            // Send apparent wind
             tN2kMsg N2kMsg;
             double localAwsMs = isAwsValid ? KnotsToms(awsKts) : N2kDoubleNA;
             double localAwaRad = isAwaValid ? awaRad : N2kDoubleNA;
             tN2kWindReference windRef = !isAwsValid && !isAwaValid ? N2kWind_Unavailable : N2kWind_Apparent;
 
-            SetN2kWindSpeed(N2kMsg, this->uc_WindSeqId++, localAwsMs, localAwaRad, windRef );
+            SetN2kWindSpeed(N2kMsg, this->uc_WindSeqId, localAwsMs, localAwaRad, windRef );
             N2kMsg.Priority = DEFAULT_WIND_PRIO;
             bool sentOk = NMEA2000.SendMsg(N2kMsg, DEV_MHU);
             ESP_LOGD(TAG, "SetN2kWindSpeed AWS=%.0f AWA=%.1f ref=%d %s", msToKnots(localAwsMs), RadToDeg(localAwaRad), windRef, sentOk ? "OK" : "Failed");
             m_ledBlinker.SetBusState(sentOk);
+
+            // Send true wind
+            bool isTwsTwaValid = false;
+            if ( isAwsValid && isAwaValid && isSowValid ) {
+                float twaRad, twsKts;
+                isTwsTwaValid = TrueWindComputer::computeTrueWind(sowKts, awsKts, awaRad, twaRad, twsKts);
+                if ( isTwsTwaValid ) {
+                    SetN2kWindSpeed(N2kMsg, this->uc_WindSeqId, KnotsToms(twsKts), twaRad, N2kWind_True_water);
+                    ESP_LOGD(TAG, "SetN2kWindSpeed TWS=%.0f TWA=%.1f", msToKnots(twsKts), RadToDeg(twaRad));
+                }
+            }
+
+            if ( !isTwsTwaValid ){
+                SetN2kWindSpeed(N2kMsg, this->uc_WindSeqId, N2kDoubleNA, N2kDoubleNA, N2kWind_True_water);
+            }
+
+            N2kMsg.Priority = DEFAULT_WIND_PRIO;
+            sentOk = NMEA2000.SendMsg(N2kMsg, DEV_MHU);
+            m_ledBlinker.SetBusState(sentOk);
+
+            this->uc_WindSeqId++;
         }
 
         if ( s_WaterScheduler.IsTime() ) {
@@ -335,4 +358,11 @@ bool N2KHandler::BoatSpeedCalGroupFunctionHandler::ProcessCommand(const tN2kMsg 
     }
 
     return true;
+}
+
+float N2KHandler::NormalizeRadTWOPI(double rad) {
+    while (rad < 0) rad += M_TWOPI;
+    while (rad >= M_TWOPI) rad -= M_TWOPI;
+
+    return (float)rad;
 }

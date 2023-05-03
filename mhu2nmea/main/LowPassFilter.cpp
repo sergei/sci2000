@@ -37,7 +37,7 @@ float LowPassFilter::filterAngle(float value, float dt) {
         filtered_value += M_TWOPI;
     }
 
-    while (filtered_value >= 360.0) {
+    while (filtered_value >= M_TWOPI) {
         filtered_value -= M_TWOPI;
     }
 

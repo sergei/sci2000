@@ -1,0 +1,11 @@
+// Rename this file to KnownSsidList.h and put your own SSID and password here.
+// Never put this file to git repository.
+#ifndef IMU2NMEA_KNOWNSSIDLIST_H
+#define IMU2NMEA_KNOWNSSIDLIST_H
+
+const SsidPassList knownSsidList[] = {
+        {"SSID1", "PASS1"},
+        {"SSID2", "PASS2"},
+};
+
+#endif //IMU2NMEA_KNOWNSSIDLIST_H

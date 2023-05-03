@@ -7,7 +7,8 @@
 #include "CalibrationStorage.h"
 #include "wmm.h"
 
-NMEA2000_esp32_twai NMEA2000(ESP32_CAN_TX_PIN, ESP32_CAN_RX_PIN, TWAI_MODE_NORMAL, TWAI_TX_QUEUE_LEN);
+NMEA2000_esp32_twai NMEA2000(ESP32_CAN_TX_PIN, ESP32_CAN_RX_PIN,
+                             TWAI_MODE_NORMAL, TWAI_TX_QUEUE_LEN);
 
 static const unsigned long TX_PGNS_IMU[] PROGMEM={127250, // Vessel Heading
                                                   127257, // Attitude
@@ -326,6 +327,10 @@ float N2KHandler::NormalizeDeg180(double deg) {
     return (float)deg;
 }
 
+bool N2KHandler::addBusListener(TwaiBusListener *listener) {
+    return NMEA2000.addBusListener(listener);
+}
+
 bool N2KHandler::ImuCalGroupFunctionHandler::ProcessRequest(const tN2kMsg &N2kMsg, uint32_t TransmissionInterval,
                                                             uint16_t TransmissionIntervalOffset,
                                                             uint8_t NumberOfParameterPairs, int Index, int iDev) {
@@ -364,4 +369,15 @@ bool N2KHandler::ImuCalGroupFunctionHandler::ProcessCommand(const tN2kMsg &N2kMs
         }
     }
     return true;
+}
+
+void N2KHandler::onSideIfcTwaiFrame(unsigned long id, unsigned char len, const unsigned char *buf) {
+    // Send frame to CAN bus
+    // Prevent loopback by suspending side interface
+    NMEA2000.SuspendSideInterface(true);
+    NMEA2000.CANSendFrame(id, len, buf, false);
+    NMEA2000.SuspendSideInterface(false);
+
+    // Send frame to local NMEA200 stack
+    NMEA2000.InjectSideTwaiFrame(id, len, buf);
 }

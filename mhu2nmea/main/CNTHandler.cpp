@@ -56,8 +56,9 @@ void CNTHandler::Start() {
     m_Started = true;
 }
 
-void CNTHandler::StartUnit(pcnt_unit_t unit, int pulseGpio, int16_t pulsesPerInterrupt) {
-    ESP_LOGI(TAG, "Starting counting pulses on GPIO%d unit %d, %d ppi", pulseGpio, unit, pulsesPerInterrupt);
+void CNTHandler::StartUnit(pcnt_unit_t unit, int pulseGpio, int16_t pulsesPerInterrupt, gpio_pull_mode_t pullMode) {
+    ESP_LOGI(TAG, "Starting counting pulses on GPIO%d unit %d, %d ppi pullMode %d",
+             pulseGpio, unit, pulsesPerInterrupt, pullMode);
 
     /* Initialize PCNT functions:
      *  - configure and initialize PCNT
@@ -96,7 +97,7 @@ void CNTHandler::StartUnit(pcnt_unit_t unit, int pulseGpio, int16_t pulsesPerInt
     // Disable pull up and pull down, otherwise it interferes with Engine Top Hat clamper
     // It's important to call it here otherwise some code up above will override this setting and
     // set it to pull up.
-    gpio_set_pull_mode((gpio_num_t)pulseGpio, GPIO_FLOATING);
+    gpio_set_pull_mode((gpio_num_t)pulseGpio, pullMode);
 
     /* Initialize PCNT's counter */
     pcnt_counter_pause(unit);
@@ -139,19 +140,21 @@ float CNTHandler::convertToHz(const pcnt_evt_t &evt, int16_t pulsesPerInterrupt)
         if (res == pdTRUE) {
             hz = convertToHz(evt, m_pulsesPerInterrupt[unit]);
         }
-        m_CtrHandlers[unit]->report(res == pdTRUE, hz);
+        // Report valid measurement of 0 Hz even if no pulses were detected. Otherwise we see -- on the screen
+        // TODO maybe we can read voltage and deside if it's properly connected?
+        m_CtrHandlers[unit]->report(true, hz);
     }
 
 }
 
-bool CNTHandler::AddCounterHandler(CounterHandler *handler, int pulseGpioNum, int16_t pulsesPerInterrupt) {
+bool CNTHandler::AddCounterHandler(CounterHandler *handler, int pulseGpioNum, int16_t pulsesPerInterrupt, gpio_pull_mode_t pullMode) {
     if ( m_unitsUsed < PCNT_UNIT_MAX){
         m_CtrHandlers[m_unitsUsed] = handler;
         m_pulsesPerInterrupt[m_unitsUsed] = pulsesPerInterrupt;
         if ( ! m_Started ){
             Start();
         }
-        StartUnit((pcnt_unit_t)m_unitsUsed, pulseGpioNum, pulsesPerInterrupt);
+        StartUnit((pcnt_unit_t)m_unitsUsed, pulseGpioNum, pulsesPerInterrupt, pullMode);
         m_unitsUsed++;
         return true;
     }else{
@@ -171,7 +174,7 @@ void CounterHandler::report(bool isValid, float raw_hz) {
 
         // Filter the raw frequency
         filtered_hz = m_lpf.filter(raw_hz, dt_sec);
-        ESP_LOGI(TAG,"%s,dt_sec,%.3f,raw_hz,%.2f,hz,%.2f", m_name, dt_sec, raw_hz, filtered_hz);
+        ESP_LOGD(TAG,"%s,dt_sec,%.3f,raw_hz,%.2f,hz,%.2f", m_name, dt_sec, raw_hz, filtered_hz);
     }else{
         ESP_LOGE(TAG,"%s,dt_sec,,raw_hz,,hz,", m_name);
     }

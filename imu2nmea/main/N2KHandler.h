@@ -67,7 +67,7 @@ static const int SEC_IN_DAY = 24 * 60 * 60;
 
 static const int JAVELIN_COMPASS_MOUNT_OFFSET = 90; // experimental value after installation on Javelin
 
-class N2KHandler {
+class N2KHandler : public SideTwaiBusInterface{
 
     /// Class to handle NMEA Group function commands sent by PGN 126208  for PGN 130902 to send/receive IMU calibration
     class ImuCalGroupFunctionHandler: public CustomPgnGroupFunctionHandler{
@@ -75,6 +75,7 @@ class N2KHandler {
         ImuCalGroupFunctionHandler(N2KHandler &n2kHandler, tNMEA2000 *_pNMEA2000):
                 CustomPgnGroupFunctionHandler(_pNMEA2000,IMU_CALIBRATION_PGN,
                                               SCI_MFG_CODE, SCI_INDUSTRY_CODE), m_n2kHandler(n2kHandler) {}
+
     protected:
         /// Network requested calibration values
         /// We reply with PGN 130902 containing these values
@@ -94,6 +95,8 @@ class N2KHandler {
 public:
     explicit N2KHandler(const xQueueHandle &evtQueue,  LEDBlinker &ledBlinker);
     void Start();
+    bool addBusListener(TwaiBusListener *listener);
+    void onSideIfcTwaiFrame(unsigned long id, unsigned char len, const unsigned char *buf) override;
 
     [[noreturn]] void N2KTask();
 
