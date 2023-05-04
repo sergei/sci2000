@@ -10,6 +10,7 @@ static const int  I2C_MASTER_RX_BUF_DISABLE =  0;  /*!< I2C master doesn't need 
 static const int MS_TO_WAIT = 100;
 
 // CMPS12 Internal registers ( see imu2nmea/doc/cmps12.pdf )
+static const int REG_CMD = (uint8_t) 0x00;
 static const int REG_COMP_HI = (uint8_t) 0x02;
 static const int REG_PITCH = (uint8_t) 0x04;
 static const int REG_ROLL = (uint8_t) 0x05;
@@ -79,15 +80,22 @@ void IMUHandler::Start() {
                             .hdg = (float)comp / 10.f,
                             .pitch = (float) pitch,
                             .roll = (float) roll,
-                            .sysCal = (uint8_t)((calibrState >> 6) & 0x03),
-                            .gyroCal = (uint8_t)((calibrState >> 4) & 0x03),
-                            .accCal = (uint8_t)((calibrState >> 2) & 0x03),
-                            .magCal = (uint8_t)((calibrState >> 0) & 0x03),
+                            .calibrState = calibrState,
                         }
                     }
             };
 
             xQueueSend(eventQueue, &evt, 0);
+        }
+
+        if ( gotStoreCalCmd ){
+            gotStoreCalCmd = false;
+            doStoreCalibration();
+        }
+
+        if ( gotEraseCalCmd ){
+            gotStoreCalCmd = false;
+            doEraseCalibration();
         }
 
         vTaskDelay(100 / portTICK_PERIOD_MS); // FIXME must be driven by N2K rate
@@ -146,4 +154,35 @@ esp_err_t IMUHandler::readReg(uint8_t regNum, uint16_t &val) const {
     val = (((uint16_t)hi) << 8) | (uint16_t)lo;
     return ESP_OK;
 }
+
+void IMUHandler::StoreCalibration() {
+    gotStoreCalCmd = true;
+}
+
+void IMUHandler::EraseCalibration() {
+    gotEraseCalCmd = true;
+}
+
+void IMUHandler::doStoreCalibration() {
+    uint8_t cmd[] = {0xF0, 0xF5, 0xF6};
+
+    ESP_LOGI(TAG, "Storing CMPS12 calibration");
+    WriteCommand(cmd);
+}
+
+void IMUHandler::doEraseCalibration() {
+    uint8_t cmd[] = {0xE0, 0xE5, 0xE2};
+
+    ESP_LOGI(TAG, "Erasing CMPS12 calibration");
+    WriteCommand(cmd);
+}
+
+void IMUHandler::WriteCommand(const uint8_t *cmd) const {
+    for(int i = 0; i < 3; i++){
+        i2c_master_write_to_device(I2C_MASTER_NUM, i2c_addr,
+                                   cmd + i, 1,MS_TO_WAIT / portTICK_RATE_MS);
+        vTaskDelay(20 / portTICK_PERIOD_MS);
+    }
+}
+
 

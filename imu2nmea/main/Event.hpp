@@ -21,10 +21,7 @@ struct Event {
             float hdg;
             float pitch;
             float roll;
-            uint8_t sysCal;
-            uint8_t gyroCal;
-            uint8_t accCal;
-            uint8_t magCal;
+            uint8_t calibrState;
         }imu;
         struct {
             minmea_sentence_rmc rmc;

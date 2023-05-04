@@ -27,9 +27,10 @@ static const char *TAG = "imu2nmea_N2KHandler";
 tN2kSyncScheduler N2KHandler::s_HdgScheduler(false, DEFAULT_HDG_TX_RATE, 0);
 tN2kSyncScheduler N2KHandler::s_AttScheduler(false, DEFAULT_ATTITUDE_TX_RATE, 0);
 
-N2KHandler::N2KHandler(const xQueueHandle &evtQueue, LEDBlinker &ledBlinker)
+N2KHandler::N2KHandler(const xQueueHandle &evtQueue, LEDBlinker &ledBlinker, IMUCalInterface &imuCalInterface)
     :m_evtQueue(evtQueue)
     ,m_ledBlinker(ledBlinker)
+    ,imuCalInterface(imuCalInterface)
     ,m_imuCalGroupFunctionHandler(*this, &NMEA2000)
     ,m_busListener(evtQueue, ledBlinker)
 {
@@ -122,6 +123,7 @@ void N2KHandler::Start() {
                     // Roll must be positive when tilted right
                     roll = - NormalizeDeg180(evt.u.imu.pitch + RadToDeg(m_pitchCorrRad));
                     pitch = NormalizeDeg180(evt.u.imu.roll + RadToDeg(m_rollCorrRad));
+                    calibrState = evt.u.imu.calibrState;
                     isImuValid = evt.isValid;
                     if( isImuValid ){
                         imuUpdateTime = esp_timer_get_time();
@@ -296,7 +298,7 @@ void N2KTwaiBusAlertListener::onAlert(uint32_t alerts, bool isError) {
     }
 }
 
-bool N2KHandler::SendImuCalValues() {
+bool N2KHandler::SendImuCalValues() const {
     // Get calibration values
     float hdgCorrRad, rollCorrRad, pitchCorrRad;
     CalibrationStorage::ReadHeadingCalibration(hdgCorrRad);
@@ -311,24 +313,8 @@ bool N2KHandler::SendImuCalValues() {
     N2kMsg.Add2ByteDouble(RadToDeg(hdgCorrRad),ANGLE_CAL_SCALE);
     N2kMsg.Add2ByteDouble(RadToDeg(pitchCorrRad),ANGLE_CAL_SCALE);
     N2kMsg.Add2ByteDouble(RadToDeg(rollCorrRad),ANGLE_CAL_SCALE);
+    N2kMsg.AddByte(calibrState);
     return NMEA2000.SendMsg(N2kMsg, DEV_IMU);
-}
-
-float N2KHandler::NormalizeDeg360(double deg) {
-    while (deg < 0) deg += 360.f;
-    while (deg >= 360) deg -= 360.f;
-
-    return (float)deg;
-}
-
-float N2KHandler::NormalizeDeg180(double deg) {
-    deg = NormalizeDeg360(deg);
-    if (deg > 180) deg -= 360.f;
-    return (float)deg;
-}
-
-bool N2KHandler::addBusListener(TwaiBusListener *listener) {
-    return NMEA2000.addBusListener(listener);
 }
 
 bool N2KHandler::ImuCalGroupFunctionHandler::ProcessRequest(const tN2kMsg &N2kMsg, uint32_t TransmissionInterval,
@@ -343,6 +329,7 @@ bool N2KHandler::ImuCalGroupFunctionHandler::ProcessCommand(const tN2kMsg &N2kMs
 
     ESP_LOGI(TAG, "N2KHandler::ImuCalGroupFunctionHandler::HandleCommand NumberOfParameterPairs=%d", NumberOfParameterPairs);
     int16_t value;
+    uint8_t calCmd;
     for( int i=0; i < NumberOfParameterPairs; i++){
         uint8_t fn = N2kMsg.GetByte(Index);
         switch (fn){
@@ -364,11 +351,37 @@ bool N2KHandler::ImuCalGroupFunctionHandler::ProcessCommand(const tN2kMsg &N2kMs
                 CalibrationStorage::UpdateRollCalibration(value);
                 CalibrationStorage::ReadRollCalibration(m_n2kHandler.m_rollCorrRad);
                 break;
+            case 7: // Field 7: CMPS12 Calibration: FD - Store, FE - Erase, FF - Leave unchanged
+                calCmd = N2kMsg.GetByte(Index);
+                ESP_LOGI(TAG, "Cal CMD=%02X", calCmd);
+                if ( calCmd == 0xFD ){
+                    m_n2kHandler.imuCalInterface.StoreCalibration();
+                }else if ( calCmd == 0xFE ){
+                    m_n2kHandler.imuCalInterface.EraseCalibration();
+                }
+                break;
             default:
                 break;
         }
     }
     return true;
+}
+
+float N2KHandler::NormalizeDeg360(double deg) {
+    while (deg < 0) deg += 360.f;
+    while (deg >= 360) deg -= 360.f;
+
+    return (float)deg;
+}
+
+float N2KHandler::NormalizeDeg180(double deg) {
+    deg = NormalizeDeg360(deg);
+    if (deg > 180) deg -= 360.f;
+    return (float)deg;
+}
+
+bool N2KHandler::addBusListener(TwaiBusListener *listener) {
+    return NMEA2000.addBusListener(listener);
 }
 
 void N2KHandler::onSideIfcTwaiFrame(unsigned long id, unsigned char len, const unsigned char *buf) {

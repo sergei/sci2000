@@ -15,6 +15,7 @@
 #include "NMEA2000_esp32_twai.h"
 #include "LEDBlinker.h"
 #include "minmea.h"
+#include "IMUCalInterface.h"
 
 class N2KTwaiBusAlertListener: public TwaiBusAlertListener{
 public:
@@ -49,8 +50,15 @@ static const unsigned long IMU_CALIBRATION_PGN = 130902;  // IMU calibration
     Field 4: HeadingGOffset, 2 bytes 0xfffe - restore default 0xFFFF - leave unchanged
     Field 5: PitchOffset, 2 bytes 0xfffe - restore default 0xFFFF - leave unchanged
     Field 6: RollOffset, 2 bytes 0xfffe - restore default 0xFFFF - leave unchanged
+    Field 7: CMPS12 calibration state:
+    Read:
+               |  Bit 7   | Bit 6   | Bit 5   | Bit 4  |   Bit 3  |  Bit 2         |    Bit 1  |  Bit 0       |
+    Cal status | System calibration | Gyro calibration | Accelerometer calibration | Magnetometer calibration |
+    Write:
+       FD - Store
+       FE - Erase
+       FF - Leave unchanged
  */
-
 
 static const int IMU_TOUT = 10 * 1000000;
 
@@ -93,7 +101,7 @@ class N2KHandler : public SideTwaiBusInterface{
     };
 
 public:
-    explicit N2KHandler(const xQueueHandle &evtQueue,  LEDBlinker &ledBlinker);
+    explicit N2KHandler(const xQueueHandle &evtQueue,  LEDBlinker &ledBlinker, IMUCalInterface &imuCalInterface);
     void Start();
     bool addBusListener(TwaiBusListener *listener);
     void onSideIfcTwaiFrame(unsigned long id, unsigned char len, const unsigned char *buf) override;
@@ -106,12 +114,15 @@ private:
 
     const xQueueHandle &m_evtQueue;
     LEDBlinker &m_ledBlinker;
+    IMUCalInterface &imuCalInterface;
     ImuCalGroupFunctionHandler m_imuCalGroupFunctionHandler;
     N2KTwaiBusAlertListener m_busListener;
 
     unsigned char uc_SeqId = 0;
 
     bool isImuValid = false;
+    uint8_t calibrState = 0;
+
     int64_t imuUpdateTime = 0;
     float hdg=0;
     float pitch=0;
@@ -121,7 +132,7 @@ private:
     static tN2kSyncScheduler s_HdgScheduler;
     static tN2kSyncScheduler s_AttScheduler;
 
-    static bool SendImuCalValues();
+    bool SendImuCalValues() const;
 
     // Calibration values
     float m_hdgCorrRad = 0;

@@ -19,7 +19,7 @@ static const uint8_t CMPS12_i2C_ADDR = 0xC0 >> 1;  //  CMPS12 I2C address
 
 LEDBlinker ledBlinker(GPIO_NUM_2);
 IMUHandler imuHandler(evt_queue, SDA_IO_NUM, SCL_IO_NUM, CMPS12_i2C_ADDR);
-N2KHandler n2KHandler(evt_queue, ledBlinker);
+N2KHandler n2KHandler(evt_queue, ledBlinker, imuHandler);
 GPSHandler gpsHandler(evt_queue, 15, 13);
 
 #ifdef ENABLE_WIFI
