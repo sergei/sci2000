@@ -55,10 +55,14 @@ static const unsigned long IMU_CALIBRATION_PGN = 130902;  // IMU calibration
                |  Bit 7   | Bit 6   | Bit 5   | Bit 4  |   Bit 3  |  Bit 2         |    Bit 1  |  Bit 0       |
     Cal status | System calibration | Gyro calibration | Accelerometer calibration | Magnetometer calibration |
     Write:
-       FD - Store
-       FE - Erase
-       FF - Leave unchanged
+       0 - Leave unchanged
+       1 - Store
+       2 - Erase
  */
+enum Cmps12CalState {
+    CMPS12_STORE_CAL = 1,
+    CMPS12_ERASE_CAL = 2,
+};
 
 static const int IMU_TOUT = 10 * 1000000;
 

@@ -354,9 +354,9 @@ bool N2KHandler::ImuCalGroupFunctionHandler::ProcessCommand(const tN2kMsg &N2kMs
             case 7: // Field 7: CMPS12 Calibration: FD - Store, FE - Erase, FF - Leave unchanged
                 calCmd = N2kMsg.GetByte(Index);
                 ESP_LOGI(TAG, "Cal CMD=%02X", calCmd);
-                if ( calCmd == 0xFD ){
+                if ( calCmd == Cmps12CalState::CMPS12_STORE_CAL ){
                     m_n2kHandler.imuCalInterface.StoreCalibration();
-                }else if ( calCmd == 0xFE ){
+                }else if ( calCmd == Cmps12CalState::CMPS12_ERASE_CAL ){
                     m_n2kHandler.imuCalInterface.EraseCalibration();
                 }
                 break;

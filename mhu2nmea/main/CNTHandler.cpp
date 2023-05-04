@@ -132,7 +132,7 @@ float CNTHandler::convertToHz(const pcnt_evt_t &evt, int16_t pulsesPerInterrupt)
     ESP_LOGI(TAG, "Counter tasks started");
     while (true) {
         // Wait for at least 10 seconds, if nothing came then report 0
-        portBASE_TYPE res = xQueueReceive(evtQueue, &evt, 10000 / portTICK_PERIOD_MS);
+        portBASE_TYPE res = xQueueReceive(evtQueue, &evt, 1000 / portTICK_PERIOD_MS);
 
         int unit = evt.unit;
 
