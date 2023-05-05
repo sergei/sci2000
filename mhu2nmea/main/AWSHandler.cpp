@@ -13,8 +13,8 @@ void AWSHandler::onCounted(bool isValid, float Hz) {
     float kts = 0;
     if(Hz >= AWS_THR_HZ){
         kts = AWS_A0 + Hz * AWS_B0;
-        ESP_LOGI(TAG, "AWS_KTS,%.1f", kts);
     }
+    ESP_LOGI(TAG, "AWS_KTS,%.1f", kts);
     Event dataEvt = {
             .src = AWS,
             .isValid = isValid,

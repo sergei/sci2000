@@ -9,6 +9,8 @@
 #include "Event.hpp"
 #include "LowPassFilter.h"
 
+// Report 0 Hz if interval between pulses greater than that.
+static const double CNT_REPORT_TIMEOUT_SEC = 4.;
 
 class CounterHandler{
 public:
@@ -16,10 +18,14 @@ public:
         :m_name(name),m_lpf(lpf_cutoff_frequency){}
     virtual void onCounted(bool isValid, float filtered_hz) = 0;
     virtual void report(bool isValid, float raw_hz);
+    const char *GetName() const { return m_name;}
+
+    void checkTimeout();
+
 private:
     const char *m_name;
     LowPassFilter m_lpf;
-    int64_t last_poll_time_us = esp_timer_get_time();
+    int64_t last_report_time_us = esp_timer_get_time();
 };
 
 typedef struct {

@@ -129,20 +129,22 @@ float CNTHandler::convertToHz(const pcnt_evt_t &evt, int16_t pulsesPerInterrupt)
 
 [[noreturn]] void CNTHandler::CounterTask() {
     pcnt_evt_t evt;
-    ESP_LOGI(TAG, "Counter tasks started");
+    auto ticksToWait = 1000 / portTICK_PERIOD_MS;
+    ESP_LOGI(TAG, "Counter tasks started ticks to wait %d", ticksToWait);
     while (true) {
         // Wait for at least 10 seconds, if nothing came then report 0
-        portBASE_TYPE res = xQueueReceive(evtQueue, &evt, 1000 / portTICK_PERIOD_MS);
+        portBASE_TYPE res = xQueueReceive(evtQueue, &evt, ticksToWait);
 
         int unit = evt.unit;
 
-        float hz = 0;
         if (res == pdTRUE) {
-            hz = convertToHz(evt, m_pulsesPerInterrupt[unit]);
+            float hz = convertToHz(evt, m_pulsesPerInterrupt[unit]);
+            m_CtrHandlers[unit]->report(true, hz);
         }
-        // Report valid measurement of 0 Hz even if no pulses were detected. Otherwise we see -- on the screen
-        // TODO maybe we can read voltage and deside if it's properly connected?
-        m_CtrHandlers[unit]->report(true, hz);
+
+        for( int i = 0; i < m_unitsUsed ; i++){
+            m_CtrHandlers[i]->checkTimeout();
+        }
     }
 
 }
@@ -169,8 +171,8 @@ void CounterHandler::report(bool isValid, float raw_hz) {
     if ( isValid ){
         // Compute time since last poll
         int64_t now_us = esp_timer_get_time();
-        auto dt_sec = ((float)(now_us - last_poll_time_us) / 1000000.0f);
-        last_poll_time_us = now_us;
+        auto dt_sec = ((float)(now_us - last_report_time_us) / 1000000.0f);
+        last_report_time_us = now_us;
 
         // Filter the raw frequency
         filtered_hz = m_lpf.filter(raw_hz, dt_sec);
@@ -179,4 +181,14 @@ void CounterHandler::report(bool isValid, float raw_hz) {
         ESP_LOGE(TAG,"%s,dt_sec,,raw_hz,,hz,", m_name);
     }
     onCounted(isValid, filtered_hz);
+}
+
+void CounterHandler::checkTimeout() {
+    int64_t now_us = esp_timer_get_time();
+    auto dt_sec = ((float)(now_us - last_report_time_us) / 1000000.0f);
+    if (dt_sec > CNT_REPORT_TIMEOUT_SEC){
+        ESP_LOGI(TAG, "%s timeout, report 0Hz", m_name);
+        report(true, 0);
+    }
+
 }

@@ -93,7 +93,7 @@ bool AWAHandler::pollAwa(float &awaRad) {
 
             auto raw_awa_rad = (float)fmod(angle, M_TWOPI);
             awaRad = this->m_awaFilter.filterAngle(raw_awa_rad, dt_sec);
-            ESP_LOGI(TAG, "AWA,dt_sec,%.3f,raw_a,%.1f,est_a,%.1f,r,%.2f,g,%.2f,b,%.2f,raw_awa,%.1f,est_awa,%.1f",
+            ESP_LOGD(TAG, "AWA,dt_sec,%.3f,raw_a,%.1f,est_a,%.1f,r,%.2f,g,%.2f,b,%.2f,raw_awa,%.1f,est_awa,%.1f",
                      dt_sec, raw_a, est_a, est_red_u, est_green_u, est_blue_u, RAD_2_DEG(raw_awa_rad), RAD_2_DEG(awaRad));
             return true;
         }
