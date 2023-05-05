@@ -94,7 +94,7 @@ void IMUHandler::Start() {
         }
 
         if ( gotEraseCalCmd ){
-            gotStoreCalCmd = false;
+            gotEraseCalCmd = false;
             doEraseCalibration();
         }
 
@@ -178,9 +178,14 @@ void IMUHandler::doEraseCalibration() {
 }
 
 void IMUHandler::WriteCommand(const uint8_t *cmd) const {
+    esp_err_t err;
     for(int i = 0; i < 3; i++){
-        i2c_master_write_to_device(I2C_MASTER_NUM, i2c_addr,
+        err = i2c_master_write_to_device(I2C_MASTER_NUM, i2c_addr,
                                    cmd + i, 1,MS_TO_WAIT / portTICK_RATE_MS);
+        if ( err != ESP_OK){
+            ESP_LOGE(TAG, "Failed I2C write to device %d %s", err, esp_err_to_name(err));
+            break;
+        }
         vTaskDelay(20 / portTICK_PERIOD_MS);
     }
 }

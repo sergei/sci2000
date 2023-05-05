@@ -314,6 +314,12 @@ bool N2KHandler::SendImuCalValues() const {
     N2kMsg.Add2ByteDouble(RadToDeg(pitchCorrRad),ANGLE_CAL_SCALE);
     N2kMsg.Add2ByteDouble(RadToDeg(rollCorrRad),ANGLE_CAL_SCALE);
     N2kMsg.AddByte(calibrState);
+    ESP_LOGI(TAG,"Send CAL hdg %.1f pitch %.1f roll %.1f calState %02X",
+             RadToDeg(hdgCorrRad),
+             RadToDeg(pitchCorrRad),
+             RadToDeg(rollCorrRad),
+             calibrState
+             );
     return NMEA2000.SendMsg(N2kMsg, DEV_IMU);
 }
 
