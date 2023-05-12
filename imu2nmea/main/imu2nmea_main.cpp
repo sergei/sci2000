@@ -8,8 +8,9 @@
 #include "N2KHandler.h"
 #include "LEDBlinker.h"
 #include "GPSHandler.h"
+#include "SensorFusion.h"
 
-#define ENABLE_WIFI
+#define ENABLE_WIFIx
 
 xQueueHandle evt_queue;   // A queue to handle  send events from sensors to N2K
 
@@ -26,11 +27,15 @@ GPSHandler gpsHandler(evt_queue, 15, 13);
 N2kWifi n2kWifi(n2KHandler);
 #endif
 
+SensorFusion sensorFusion;
+
 static const char *TAG = "imu2nmea_main";
 
 extern "C" [[noreturn]] void app_main(void)
 {
     ESP_LOGE(TAG,"Git hash:%s",GIT_HASH);
+
+    sensorFusion.Start();
 
     // Initialize event queue
     evt_queue = xQueueCreate(10, sizeof(Event));
@@ -49,9 +54,9 @@ extern "C" [[noreturn]] void app_main(void)
 
 
     ledBlinker.Start();
-    n2KHandler.Start();
+//    n2KHandler.Start();
     gpsHandler.Start();
-    imuHandler.Task();
+//    imuHandler.Task();
 
     while (true) {
         vTaskDelay(1000 / portTICK_PERIOD_MS);

@@ -6,6 +6,7 @@ idf_component_register(
         N2KHandler.cpp
         CalibrationStorage.cpp
         LEDBlinker.cpp
+        SensorFusion.cpp
     INCLUDE_DIRS
         ""
 )

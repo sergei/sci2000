@@ -2,7 +2,7 @@
 
 ## Hardware 
 
-* The [Sailor HAT](https://docs.hatlabs.fi/sh-esp32/) board is used to run this SW
+* The [Sailor HAT](https://docs.hatlabs.fi/sh-esp32/) board is used to Start this SW
 * The GPS Module GPS NEO-6M is connected to the ESP32 UART module using following pins
   * RX - GPIO 15 of ESP32
   * TX - GPIO 13 of ESP32
