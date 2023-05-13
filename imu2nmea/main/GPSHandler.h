@@ -27,17 +27,17 @@ private:
 
 class GPSHandler : public UbxParser::Writer{
 public:
-    GPSHandler(const xQueueHandle &eventQueue, int tx_io_num, int rx_io_num);
+    GPSHandler(const xQueueHandle &eventQueue, int tx_io_num, int rx_io_num, uart_port_t uart_num);
     void Start();
     [[noreturn]] void Task();
     void writeToUbx(const uint8_t *b, size_t len) override;
 private:
     GpsParser m_gpsParser;
-    int tx_io_num;
-    int rx_io_num;
+    const int tx_io_num;
+    const int rx_io_num;
+    const uart_port_t uart_num;
     UbxParser m_ubxParser;
     QueueHandle_t m_uartEventQueue = nullptr;
-    const uart_port_t uart_num = UART_NUM_2;
     const int uart_buffer_size = 4 * 1024;
 
     void initUbx();

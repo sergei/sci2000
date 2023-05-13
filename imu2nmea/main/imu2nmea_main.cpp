@@ -8,6 +8,7 @@
 #include "N2KHandler.h"
 #include "LEDBlinker.h"
 #include "GPSHandler.h"
+#include "IMU_HWT905Handler.h"
 
 #define ENABLE_WIFI
 
@@ -17,10 +18,23 @@ const int SDA_IO_NUM = 16;
 const int SCL_IO_NUM = 17;
 static const uint8_t CMPS12_i2C_ADDR = 0xC0 >> 1;  //  CMPS12 I2C address
 
+#define USE_IMU_HWT905
+//#define USE_IMU_CMPS12
+
 LEDBlinker ledBlinker(GPIO_NUM_2);
+
+#ifdef USE_IMU_CMPS12
 IMUHandler imuHandler(evt_queue, SDA_IO_NUM, SCL_IO_NUM, CMPS12_i2C_ADDR);
-N2KHandler n2KHandler(evt_queue, ledBlinker, imuHandler);
-GPSHandler gpsHandler(evt_queue, 15, 13);
+IMUCalInterface &imuCalInterface = imuHandler;
+#endif
+
+#ifdef USE_IMU_HWT905
+IMU_HWT905Handler imuHWT905Handler(evt_queue, 21, 22, UART_NUM_1);
+IMUCalInterface &imuCalInterface = imuHWT905Handler;
+#endif
+
+N2KHandler n2KHandler(evt_queue, ledBlinker, imuCalInterface);
+GPSHandler gpsHandler(evt_queue, 15, 13, UART_NUM_2);
 
 #ifdef ENABLE_WIFI
 N2kWifi n2kWifi(n2KHandler);
@@ -51,7 +65,13 @@ extern "C" [[noreturn]] void app_main(void)
     ledBlinker.Start();
     n2KHandler.Start();
     gpsHandler.Start();
+#ifdef USE_IMU_CMPS12
     imuHandler.Task();
+#endif
+
+#ifdef USE_IMU_HWT905
+    imuHWT905Handler.Task();
+#endif
 
     while (true) {
         vTaskDelay(1000 / portTICK_PERIOD_MS);

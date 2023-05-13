@@ -9,10 +9,11 @@
 
 static const char *TAG = "imu2nmea_GPSHandler";
 
-GPSHandler::GPSHandler(QueueHandle_t const &eventQueue, int tx_io_num, int rx_io_num)
+GPSHandler::GPSHandler(QueueHandle_t const &eventQueue, int tx_io_num, int rx_io_num, uart_port_t uart_num)
 : m_gpsParser(eventQueue, m_ubxParser)
 , tx_io_num(tx_io_num)
 , rx_io_num(rx_io_num)
+, uart_num(uart_num)
 ,m_ubxParser(*this, m_gpsParser)
 {
 
