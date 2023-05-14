@@ -2,6 +2,8 @@
 #include "IMU_HWT905Handler.h"
 #include "wit_c_sdk/wit_c_sdk.h"
 
+#include "Event.hpp"
+
 static const char *TAG = "imu2nmea_IMU_HWT905Handler";
 
 static IMU_HWT905Handler *imuHWT905Handler = nullptr;
@@ -21,7 +23,8 @@ static void SensorUartSend(uint8_t *p_data, uint32_t uiSize){
 }
 
 static void SensorDataUpdate(uint32_t uiReg, uint32_t uiRegNum){
-
+    ESP_LOGD(TAG, "SensorDataUpdate: 0x%02x, %d", uiReg, uiRegNum);
+    imuHWT905Handler -> onSensorData(uiReg, sReg, uiRegNum);
 }
 
 static void Delayms(uint16_t ucMs){
@@ -33,7 +36,7 @@ void IMU_HWT905Handler::Start() {
     imuHWT905Handler = this;
     xTaskCreate(
             imu_task,         /* Function that implements the task. */
-            "IMUTask",            /* Text name for the task. */
+            "IMU_HWT905",            /* Text name for the task. */
             16 * 1024,        /* Stack size in words, not bytes. */
             (void *) this,  /* Parameter passed into the task. */
             tskIDLE_PRIORITY + 1, /* Priority at which the task is created. */
@@ -42,6 +45,7 @@ void IMU_HWT905Handler::Start() {
 
 void IMU_HWT905Handler::Task() {
     ESP_LOGI(TAG, "Opening serial port");
+
     uart_config_t uart_config = {
             .baud_rate = 9600,
             .data_bits = UART_DATA_8_BITS,
@@ -133,6 +137,7 @@ void IMU_HWT905Handler::Task() {
 }
 
 void IMU_HWT905Handler::ProcessInputBytes(uint8_t *data, size_t size) {
+//    ESP_LOG_BUFFER_HEX(TAG, data, size);
     for(int i = 0; i < size; i++){
         WitSerialDataIn(data[i]);
     }
@@ -152,4 +157,35 @@ void IMU_HWT905Handler::StoreCalibration() {
 
 void IMU_HWT905Handler::EraseCalibration() {
 
+}
+
+void IMU_HWT905Handler::onSensorData(uint32_t uiReg, const int16_t *data, uint32_t uiRegNum) {
+    switch (uiReg) {
+        case Roll:
+            m_fRoll = (float)(data[Roll]) / 32768.f * 180.f;
+            m_fPitch = (float)(data[Pitch]) / 32768.f * 180.f;
+            m_fYaw = (float)(data[Yaw]) / 32768.f * 180.f;
+            ESP_LOGI(TAG, "Roll: %f (0x%04X), Pitch: %f (0x%04X), Yaw: %f (0x%04X)",
+                     m_fRoll, data[Roll] & 0x0000FFFF,
+                     m_fPitch, data[Pitch] & 0x0000FFFF,
+                     m_fYaw, data[Yaw] & 0x0000FFFF);
+
+            Event evt = {
+                    .src = IMU,
+                    .isValid = true,
+                    .u{
+                            .imu {
+                                    .hdg = (float)m_fYaw / 10.f,
+                                    .pitch = (float) m_fPitch,
+                                    .roll = (float) m_fRoll,
+                                    .calibrState = 0xff,
+                            }
+                    }
+            };
+            xQueueSend(systemEventQueue, &evt, 0);
+
+
+            break;
+
+    }
 }

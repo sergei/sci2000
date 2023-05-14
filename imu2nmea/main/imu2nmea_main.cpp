@@ -29,7 +29,7 @@ IMUCalInterface &imuCalInterface = imuHandler;
 #endif
 
 #ifdef USE_IMU_HWT905
-IMU_HWT905Handler imuHWT905Handler(evt_queue, 21, 22, UART_NUM_1);
+IMU_HWT905Handler imuHWT905Handler(evt_queue, 14, 12, UART_NUM_1);
 IMUCalInterface &imuCalInterface = imuHWT905Handler;
 #endif
 
@@ -66,11 +66,11 @@ extern "C" [[noreturn]] void app_main(void)
     n2KHandler.Start();
     gpsHandler.Start();
 #ifdef USE_IMU_CMPS12
-    imuHandler.Task();
+    imuHandler.Start();
 #endif
 
 #ifdef USE_IMU_HWT905
-    imuHWT905Handler.Task();
+    imuHWT905Handler.Start();
 #endif
 
     while (true) {

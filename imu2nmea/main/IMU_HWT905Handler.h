@@ -13,9 +13,13 @@ public:
     void Start();
     void StoreCalibration() override;
     void EraseCalibration() override;
+
+
 public: // For use in static functions
     [[noreturn]] void Task();
     void writeToHwt(const uint8_t *b, size_t len) const;
+    void onSensorData(uint32_t uiReg, const int16_t *data, uint32_t uiRegNum);
+
 private:
     const xQueueHandle &systemEventQueue;
     const int tx_io_num;
@@ -26,6 +30,11 @@ private:
     static void ProcessInputBytes(uint8_t *data, size_t size);
 
     void initImu();
+
+    float m_fPitch = 0.0f;
+    float m_fRoll = 0.0f;
+    float m_fYaw = 0.0f;
+
 };
 
 
