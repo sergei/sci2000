@@ -10,7 +10,9 @@
 #include "GPSHandler.h"
 #include "IMU_HWT905Handler.h"
 
-#define ENABLE_WIFI
+//#define ENABLE_WIFI
+
+#define ENABLE_BT
 
 xQueueHandle evt_queue;   // A queue to handle  send events from sensors to N2K
 
@@ -40,6 +42,11 @@ GPSHandler gpsHandler(evt_queue, 15, 13, UART_NUM_2);
 N2kWifi n2kWifi(n2KHandler);
 #endif
 
+#ifdef ENABLE_BT
+#include "N2kBt.h"
+N2kBt n2kBt(n2KHandler);
+#endif
+
 static const char *TAG = "imu2nmea_main";
 
 extern "C" [[noreturn]] void app_main(void)
@@ -61,6 +68,10 @@ extern "C" [[noreturn]] void app_main(void)
     n2KHandler.addBusListener(&n2kWifi);
 #endif
 
+#ifdef ENABLE_BT
+    n2kBt.Start();
+    n2KHandler.addBusListener((TwaiBusListener *)&n2kBt);
+#endif
 
     ledBlinker.Start();
     n2KHandler.Start();

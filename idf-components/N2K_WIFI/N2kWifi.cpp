@@ -376,4 +376,7 @@ void N2kWifi::onTwaiFrameTransmit(unsigned long id, unsigned char len, const uns
     }
 }
 
+void N2kWifi::flush() {
+
+}
 

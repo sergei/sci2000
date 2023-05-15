@@ -189,6 +189,11 @@ void N2KHandler::Start() {
 
         // crank NMEA2000 state machine
         NMEA2000.ParseMessages();
+
+        for(int i = 0; i < m_listenerCount; i++){
+            m_listeners[i]->flush();
+        }
+
     }
 }
 
@@ -387,6 +392,11 @@ float N2KHandler::NormalizeDeg180(double deg) {
 }
 
 bool N2KHandler::addBusListener(TwaiBusListener *listener) {
+    // Add listener to the list
+    if (m_listenerCount < MAX_TWAI_LISTENERS) {
+        m_listeners[m_listenerCount++] = listener;
+    }
+
     return NMEA2000.addBusListener(listener);
 }
 

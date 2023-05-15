@@ -136,6 +136,9 @@ private:
     static tN2kSyncScheduler s_HdgScheduler;
     static tN2kSyncScheduler s_AttScheduler;
 
+    TwaiBusListener *m_listeners[MAX_TWAI_LISTENERS] = {nullptr};
+    int m_listenerCount = 0;
+
     bool SendImuCalValues() const;
 
     // Calibration values

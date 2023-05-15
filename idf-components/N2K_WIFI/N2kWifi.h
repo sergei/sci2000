@@ -36,6 +36,7 @@ public:
     void WifiEventHandler(int32_t event_id, void *event_data);
     void onTwaiFrameReceived(unsigned long id, unsigned char len, const unsigned char *buf) override;
     void onTwaiFrameTransmit(unsigned long id, unsigned char len, const unsigned char *buf) override;
+    void flush() override;
 
 private:
     static bool CheckScanResults(char *ssid, char *password);
