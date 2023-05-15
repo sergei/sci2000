@@ -4,19 +4,20 @@
 
 * The [Sailor HAT](https://docs.hatlabs.fi/sh-esp32/) board is used to run this SW
 
-
 ![Sailor HAT](doc/sh-esp32_r2.0.0_top_render.jpg)
+
+![Connectors view](doc/pcb.jpeg)
 
 * The GPS Module GPS NEO-6M is connected to the ESP32 UART module using following pins
   * RX - GPIO 15 of ESP32
   * TX - GPIO 13 of ESP32
-  * VCC - 
-  * GND - 
+  * VCC - ESP32 3.3V
+  * GND - ESP32 GND
 * The IMU Module HWT905-TTL is connected to the ESP32 UART module using following pins
   * RX (green)  - GPIO 14 of ESP32
   * TX (yellow) - GPIO 12 of ESP32
   * VCC (5V)    - + 5V of 12V to 5V converter 
-  * GND -
+  * GND - ESP32 GND
 
 ## Software
 
