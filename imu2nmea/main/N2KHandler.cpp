@@ -8,7 +8,7 @@
 #include "wmm.h"
 
 NMEA2000_esp32_twai NMEA2000(ESP32_CAN_TX_PIN, ESP32_CAN_RX_PIN,
-                             TWAI_MODE_NORMAL, TWAI_TX_QUEUE_LEN);
+                             TWAI_MODE, TWAI_TX_QUEUE_LEN);
 
 static const unsigned long TX_PGNS_IMU[] PROGMEM={127250, // Vessel Heading
                                                   127257, // Attitude
