@@ -165,7 +165,7 @@ void N2KHandler::Start() {
             N2kMsg.Priority = DEFAULT_HDG_TX_PRIO;
             bool sentOk = NMEA2000.SendMsg(N2kMsg, DEV_IMU);
             m_ledBlinker.SetBusState(sentOk);
-            ESP_LOGD(TAG, "SetN2kMagneticHeading HDG=%.1f  %s", RadToDeg(localHdgRad), sentOk ? "OK" : "Failed");
+            ESP_LOGI(TAG, "SetN2kMagneticHeading HDG=%.1f  %s", RadToDeg(localHdgRad), sentOk ? "OK" : "Failed");
         }
 
         // Check if it's time to send the messages

@@ -12,7 +12,7 @@
 
 //#define ENABLE_WIFI
 
-#define ENABLE_BT
+//#define ENABLE_BT
 
 xQueueHandle evt_queue;   // A queue to handle  send events from sensors to N2K
 
