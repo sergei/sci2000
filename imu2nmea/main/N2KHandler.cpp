@@ -118,7 +118,7 @@ void N2KHandler::Start() {
         if (res == pdTRUE) {
             switch (evt.src) {
                 case IMU:
-                    hdg = NormalizeDeg360((evt.u.imu.hdg + RadToDeg(m_hdgCorrRad)) - JAVELIN_COMPASS_MOUNT_OFFSET);
+                    hdg = NormalizeDeg360((evt.u.imu.hdg + RadToDeg(m_hdgCorrRad)) + JAVELIN_COMPASS_MOUNT_OFFSET);
                     // NB Swap pitch and roll to match the way device mounted on Javelin bulkhead
                     // Roll must be positive when tilted right
                     roll = - NormalizeDeg180(evt.u.imu.pitch + RadToDeg(m_pitchCorrRad));
