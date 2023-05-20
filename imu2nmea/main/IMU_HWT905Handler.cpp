@@ -165,7 +165,10 @@ void IMU_HWT905Handler::onSensorData(uint32_t uiReg, const int16_t *data, uint32
             m_fRoll = (float)(data[Roll]) / 32768.f * 180.f;
             m_fPitch = (float)(data[Pitch]) / 32768.f * 180.f;
             m_fYaw = (float)(data[Yaw]) / 32768.f * 180.f;
-            m_fYaw = 180 - m_fYaw; // Flip sign add 180 , based on observation made in Sourh Beach cafe
+            // Change coordinate system from NED to ENU
+            m_fYaw = 180 - m_fYaw;
+            // Apply magnetic deviation correction
+            m_fYaw = magDeviation.correct(m_fYaw);
             ESP_LOGI(TAG, "Roll: %f (0x%04X), Pitch: %f (0x%04X), Yaw: %f (0x%04X)",
                      m_fRoll, data[Roll] & 0x0000FFFF,
                      m_fPitch, data[Pitch] & 0x0000FFFF,

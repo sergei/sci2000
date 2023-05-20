@@ -4,6 +4,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "IMUCalInterface.h"
+#include "MagDeviation.h"
 #include <hal/uart_types.h>
 #include <driver/uart.h>
 
@@ -25,6 +26,7 @@ private:
     const int tx_io_num;
     const int rx_io_num;
     const uart_port_t uart_num;
+    MagDeviation magDeviation;
     const int uart_buffer_size = 4 * 1024;
     QueueHandle_t m_uartEventQueue = nullptr;
     static void ProcessInputBytes(uint8_t *data, size_t size);

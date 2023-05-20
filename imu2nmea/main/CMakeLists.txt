@@ -3,6 +3,7 @@ idf_component_register(
         imu2nmea_main.cpp
         IMUHandler.cpp
         IMU_HWT905Handler.cpp
+        MagDeviation.cpp
         wit_c_sdk/wit_c_sdk.c
         GPSHandler.cpp
         N2KHandler.cpp
