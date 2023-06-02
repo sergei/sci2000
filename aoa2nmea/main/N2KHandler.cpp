@@ -73,6 +73,7 @@ void N2KHandler::Start() {
     for( ;; ) {
         // crank NMEA2000 state machine
         NMEA2000.ParseMessages();
+        vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 }
 
