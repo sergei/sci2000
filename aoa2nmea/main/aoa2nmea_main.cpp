@@ -15,7 +15,7 @@ LEDBlinker ledBlinker(GPIO_NUM_2);
 
 N2KHandler n2KHandler(evt_queue, ledBlinker);
 
-USBAccHandler usbAccHandler(n2KHandler, 26, 25, UART_NUM_2);
+USBAccHandler usbAccHandler(n2KHandler, 26, 27, UART_NUM_2);
 
 #ifdef ENABLE_WIFI
 #include "N2kWifi.h"
@@ -56,6 +56,7 @@ extern "C" [[noreturn]] void app_main(void)
     n2KHandler.addBusListener(&usbAccHandler);
 
     ledBlinker.Start();
+    usbAccHandler.Start();
     n2KHandler.Start();
 
     while (true) {

@@ -1,15 +1,15 @@
 #ifndef IMU2NMEA_GPSHANDLER_H
 #define IMU2NMEA_GPSHANDLER_H
 
-
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include <hal/uart_types.h>
 #include <driver/uart.h>
 #include <NMEA2000_esp32_twai.h>
+#include "SlipPacket.h"
 
 
-class USBAccHandler :  public TwaiBusListener {
+class USBAccHandler :  public TwaiBusListener, SlipListener, ByteOutputStream {
 public:
     USBAccHandler(SideTwaiBusInterface &twaiBusSender, int tx_io_num, int rx_io_num, uart_port_t uart_num);
     void Start();
@@ -26,9 +26,12 @@ private:
     const int tx_io_num;
     const int rx_io_num;
     const uart_port_t uart_num;
+    SlipPacket slipPacket;
     QueueHandle_t m_uartEventQueue = nullptr;
     const int uart_buffer_size = 4 * 1024;
-
+private: // Methods
+    void sendEncodedBytes(unsigned char *buf, unsigned char len) override;
+    void onPacketReceived(const unsigned char *buf, unsigned char len) override;
 };
 
 

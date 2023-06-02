@@ -4,11 +4,9 @@
 
 * The [Sailor HAT](https://docs.hatlabs.fi/sh-esp32/) board is used to run this SW
 
-![Sailor HAT](doc/sh-esp32_r2.0.0_top_render.jpg)
+* [FTDI FT311 Full speed USB Host controller for Android.](https://ftdichip.com/products/ft311d-32l/) 
 
-![Connectors view](doc/pcb.jpeg)
-
-* The FTDI USB to serial converter is connected to the ESP32 UART module using following pins
+* FT311D board is connected to the ESP32 UART module using following pins
   * RX - GPIO 26 of ESP32
   * TX - GPIO 27 of ESP32
   * VCC - 5V of 

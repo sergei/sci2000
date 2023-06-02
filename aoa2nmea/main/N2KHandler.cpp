@@ -73,13 +73,6 @@ void N2KHandler::Start() {
     for( ;; ) {
         // crank NMEA2000 state machine
         NMEA2000.ParseMessages();
-//        for(int i = 0; i < m_listenerCount; i++){
-//            m_listeners[i]->flush();
-//        }
-        while (true) {
-            vTaskDelay(10 / portTICK_PERIOD_MS);
-        }
-
     }
 }
 
@@ -87,6 +80,7 @@ void N2KHandler::Start() {
 // Call back for NMEA2000 open. This will be called, when library starts bus communication.
 void N2KHandler::OnOpen() {
     // Start schedulers now.
+    ESP_LOGI(TAG, "NMEA2000 bus open");
 }
 
 N2KTwaiBusAlertListener::N2KTwaiBusAlertListener(QueueHandle_t const &evtQueue, LEDBlinker &ledBlinker)
@@ -127,6 +121,8 @@ void N2KHandler::onSideIfcTwaiFrame(unsigned long id, unsigned char len, const u
     // Prevent loopback by suspending side interface
     NMEA2000.SuspendSideInterface(true);
     NMEA2000.CANSendFrame(id, len, buf, false);
+    ESP_LOGD(TAG, "CAN< sent %d bytes: id=%08lX", len, id);
+
     NMEA2000.SuspendSideInterface(false);
 
     // Send frame to local NMEA200 stack

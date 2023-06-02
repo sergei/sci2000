@@ -2,6 +2,8 @@
 #include <hal/uart_types.h>
 #include <driver/uart.h>
 #include <cstring>
+#include <sys/param.h>
+#include <lwip/def.h>
 #include "USBAccHandler.h"
 
 static const char *TAG = "aoa2nmea_USBAccHandler";
@@ -11,8 +13,9 @@ USBAccHandler::USBAccHandler(SideTwaiBusInterface &twaiBusSender, int tx_io_num,
 ,tx_io_num(tx_io_num)
 ,rx_io_num(rx_io_num)
 ,uart_num(uart_num)
+,slipPacket(*this, *this)
 {
-
+    esp_log_level_set(TAG, ESP_LOG_DEBUG); // enable DEBUG logs
 }
 
 
@@ -34,7 +37,7 @@ void USBAccHandler::Start() {
 void USBAccHandler::Task() {
     ESP_LOGI(TAG, "Opening serial port");
     uart_config_t uart_config = {
-            .baud_rate = 9600,
+            .baud_rate = 115200,
             .data_bits = UART_DATA_8_BITS,
             .parity = UART_PARITY_DISABLE,
             .stop_bits = UART_STOP_BITS_1,
@@ -56,20 +59,25 @@ void USBAccHandler::Task() {
 
 
     uart_event_t event;
+    size_t bytes2read;
     uint8_t dtmp[uart_buffer_size];
 
     for (;;) {
 
         if(xQueueReceive(m_uartEventQueue, (void * )&event, (portTickType)portMAX_DELAY)){
-            ESP_LOGD(TAG, "uart[%d] event:", uart_num);
+            ESP_LOGV(TAG, "uart[%d] event:", uart_num);
             switch(event.type) {
                 //Event of UART receving data
                 /*We'd better handler data event fast, there would be much more data events than
                 other types of events. If we take too much time on data event, the queue might
                 be full.*/
                 case UART_DATA:
-                    ESP_LOGD(TAG, "[UART DATA]: %d", event.size);
-                    uart_read_bytes(uart_num, dtmp, event.size, portMAX_DELAY);
+                    ESP_LOGV(TAG, "[UART DATA]: %d", event.size);
+                    bytes2read = MIN(event.size, uart_buffer_size);
+                    uart_read_bytes(uart_num, dtmp, bytes2read, 0);
+                    for(int i=0; i < event.size; i++){
+                        slipPacket.onSlipByteReceived(dtmp[i]);
+                    }
                     break;
                     //Event of HW FIFO overflow detected
                 case UART_FIFO_OVF:
@@ -110,14 +118,47 @@ void USBAccHandler::Task() {
 }
 
 void USBAccHandler::onTwaiFrameReceived(unsigned long id, unsigned char len, const unsigned char *buf) {
+    ESP_LOGV(TAG, "onTwaiFrameReceived: %ld, %d", id, len);
+
+    unsigned char net_data[TWAI_FRAME_MAX_DLC + 5];
+    int net_id = htonl(id);
+    memcpy(net_data, &net_id, 4);
+    memcpy(net_data + 4, &len, 1);
+    for(int i = 0; i < len; i++){
+        net_data[5 + i] = buf[i];
+    }
+    int total_len = 5 + len;
+
+    slipPacket.EncodeAndSendPacket(net_data, total_len);
 
 }
 
 void USBAccHandler::onTwaiFrameTransmit(unsigned long id, unsigned char len, const unsigned char *buf) {
-
+    onTwaiFrameReceived(id, len, buf);
 }
 
 void USBAccHandler::flush() {
-
+    // Do nothing
 }
 
+void USBAccHandler::sendEncodedBytes(unsigned char *buf, unsigned char len) {
+    int nsent = uart_write_bytes(uart_num, buf, len);
+    ESP_LOGD(TAG, "USB< sent %d bytes", nsent);
+    if( nsent != len ){
+        ESP_LOGE(TAG, "USB< Error sending %d bytes", len);
+    }
+}
+
+void USBAccHandler::onPacketReceived(const unsigned char *recvbuf, unsigned char len) {
+    int net_id = 0;
+    memcpy(&net_id, recvbuf, 4);
+    int twai_id = ntohl(net_id);
+    unsigned char twai_len = recvbuf[4];
+
+    if( twai_len <= TWAI_FRAME_MAX_DLC ){
+        ESP_LOGD(TAG, "USB> received %d bytes: id=%08X len=%02X", len, twai_id, twai_len);
+        twaiBusSender.onSideIfcTwaiFrame(twai_id, twai_len, &recvbuf[5]);
+    }else{
+        ESP_LOGE(TAG, "USB> Invalid DLC %02X", twai_len);
+    }
+}
