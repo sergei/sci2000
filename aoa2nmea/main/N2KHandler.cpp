@@ -20,7 +20,7 @@ N2KHandler::N2KHandler(const xQueueHandle &evtQueue, LEDBlinker &ledBlinker)
 
 void N2KHandler::Init() {
 
-    esp_log_level_set("NMEA2000_esp32_twai", ESP_LOG_DEBUG); // enable DEBUG logs from ESP32_TWAI layer
+    esp_log_level_set("NMEA2000_esp32_twai", ESP_LOG_INFO);
     NMEA2000.SetForwardStream(&debugStream);         // PC output on idf monitor
     NMEA2000.SetForwardType(tNMEA2000::fwdt_Text); // Show in clear text
     NMEA2000.EnableForward(true);                       // Disable all msg forwarding to USB (=Serial)

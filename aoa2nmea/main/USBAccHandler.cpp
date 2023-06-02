@@ -15,7 +15,7 @@ USBAccHandler::USBAccHandler(SideTwaiBusInterface &twaiBusSender, int tx_io_num,
 ,uart_num(uart_num)
 ,slipPacket(*this, *this)
 {
-    esp_log_level_set(TAG, ESP_LOG_DEBUG); // enable DEBUG logs
+    esp_log_level_set(TAG, ESP_LOG_INFO); // enable DEBUG logs
 }
 
 
