@@ -40,7 +40,7 @@ void N2KHandler::Init() {
 
     NMEA2000.SetDeviceCount(DEV_NUM); // Enable multi device support for 2 devices
 
-    esp_log_level_set("NMEA2000_esp32_twai", ESP_LOG_DEBUG); // enable DEBUG logs from ESP32_TWAI layer
+    esp_log_level_set("NMEA2000_esp32_twai", ESP_LOG_INFO);
     NMEA2000.SetForwardStream(&debugStream);         // PC output on idf monitor
     NMEA2000.SetForwardType(tNMEA2000::fwdt_Text); // Show in clear text
     NMEA2000.EnableForward(true);                       // Disable all msg forwarding to USB (=Serial)
@@ -165,7 +165,7 @@ void N2KHandler::Start() {
             N2kMsg.Priority = DEFAULT_HDG_TX_PRIO;
             bool sentOk = NMEA2000.SendMsg(N2kMsg, DEV_IMU);
             m_ledBlinker.SetBusState(sentOk);
-            ESP_LOGI(TAG, "SetN2kMagneticHeading HDG=%.1f  %s", RadToDeg(localHdgRad), sentOk ? "OK" : "Failed");
+            ESP_LOGD(TAG, "SetN2kMagneticHeading HDG=%.1f  %s", RadToDeg(localHdgRad), sentOk ? "OK" : "Failed");
         }
 
         // Check if it's time to send the messages

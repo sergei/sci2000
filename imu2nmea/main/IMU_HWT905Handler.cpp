@@ -169,7 +169,7 @@ void IMU_HWT905Handler::onSensorData(uint32_t uiReg, const int16_t *data, uint32
             m_fYaw = 180 - m_fYaw;
             // Apply magnetic deviation correction
             m_fYaw = magDeviation.correct(m_fYaw);
-            ESP_LOGI(TAG, "Roll: %f (0x%04X), Pitch: %f (0x%04X), Yaw: %f (0x%04X)",
+            ESP_LOGD(TAG, "Roll: %f (0x%04X), Pitch: %f (0x%04X), Yaw: %f (0x%04X)",
                      m_fRoll, data[Roll] & 0x0000FFFF,
                      m_fPitch, data[Pitch] & 0x0000FFFF,
                      m_fYaw, data[Yaw] & 0x0000FFFF);
