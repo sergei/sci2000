@@ -6,7 +6,7 @@
 #include "USBAccHandler.h"
 #include "Event.hpp"
 
-//#define ENABLE_WIFI
+#define ENABLE_WIFI
 //#define ENABLE_BT
 
 xQueueHandle evt_queue;   // A queue to handle  send events from sensors to N2K
@@ -18,6 +18,7 @@ N2KHandler n2KHandler(evt_queue, ledBlinker);
 USBAccHandler usbAccHandler(n2KHandler, 26, 27, UART_NUM_2);
 
 #ifdef ENABLE_WIFI
+#include <nvs_flash.h>
 #include "N2kWifi.h"
 N2kWifi n2kWifi(n2KHandler);
 #endif
