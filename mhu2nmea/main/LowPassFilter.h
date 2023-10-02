@@ -1,6 +1,11 @@
 #ifndef MHU2NMEA_LOWPASSFILTER_H
 #define MHU2NMEA_LOWPASSFILTER_H
 
+#include <cmath>
+
+#ifndef M_TWOPI
+#define M_TWOPI         (M_PI * 2.0)
+#endif
 
 class LowPassFilter {
 public:
