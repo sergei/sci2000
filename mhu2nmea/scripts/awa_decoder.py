@@ -138,33 +138,33 @@ def scale_adc(v, ampl):
     return s
 
 
-def angle_red_0_180(est_red_u):
-    angle_red = np.mod(np.arcsin(est_red_u) + 3 * np.pi / 6, np.pi * 2)
+def angle_red_0_180(x):
+    angle_red = np.mod(np.arcsin(x) + 3 * np.pi / 6, np.pi * 2)
     return angle_red
 
 
-def angle_red_180_360(est_red_u):
-    angle_red = np.mod(- np.arcsin(est_red_u) - 3 * np.pi / 6, np.pi * 2)
+def angle_red_180_360(x):
+    angle_red = np.mod(- np.arcsin(x) - 3 * np.pi / 6, np.pi * 2)
     return angle_red
 
 
-def angle_green_120_300(est_green_u):
-    angle_green = np.mod(np.arcsin(est_green_u) - 5 * np.pi / 6, np.pi * 2)
+def angle_green_120_300(x):
+    angle_green = np.mod(np.arcsin(x) - 5 * np.pi / 6, np.pi * 2)
     return angle_green
 
 
-def angle_green_300_120(est_green_u):
-    angle_green = np.mod(- np.arcsin(est_green_u) + 1 * np.pi / 6, np.pi * 2)
+def angle_green_300_120(x):
+    angle_green = np.mod(- np.arcsin(x) + 1 * np.pi / 6, np.pi * 2)
     return angle_green
 
 
-def angle_blue_60_240(est_blue_u):
-    angle_blue = np.mod(- np.arcsin(est_blue_u) + 5 * np.pi / 6, np.pi * 2)
+def angle_blue_60_240(x):
+    angle_blue = np.mod(- np.arcsin(x) + 5 * np.pi / 6, np.pi * 2)
     return angle_blue
 
 
-def angle_blue_240_060(est_blue_u):
-    angle_blue = np.mod(np.arcsin(est_blue_u) - 1 * np.pi / 6, np.pi * 2)
+def angle_blue_240_060(x):
+    angle_blue = np.mod(np.arcsin(x) - 1 * np.pi / 6, np.pi * 2)
     return angle_blue
 
 

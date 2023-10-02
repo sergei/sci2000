@@ -5,6 +5,7 @@ idf_component_register(
         AWAHandler.cpp
         SOWHandler.cpp
         AWSHandler.cpp
+        AWAComputer.cpp
         CNTHandler.cpp
         CalibrationStorage.cpp
         LEDBlinker.cpp

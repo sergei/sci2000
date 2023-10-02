@@ -64,41 +64,27 @@ bool AWAHandler::pollAwa(float &awaRad) {
     int16_t adc_data[4];
     if ( Poll(adc_data, 3) ) {
 
-        auto red = (float) adc_data[0];
-        auto green = (float) adc_data[1];
-        auto blue = (float) adc_data[2];
+        auto red = adc_data[0];
+        auto green = adc_data[1];
+        auto blue = adc_data[2];
 
-        // Estimate amplitude
-        float raw_a = (red + green + blue) / 3;
+        // Estimate amplitude to check if the sensor is connected
+        auto raw_a = (red + green + blue);
 
-        if ( raw_a > 100 ){
+        if ( raw_a > 300 ){
             // Compute time since last poll
             int64_t now_us = esp_timer_get_time();
             auto dt_sec = ((float)(now_us - last_awa_poll_time_us) / 1000000.0f);
             last_awa_poll_time_us = now_us;
 
-            float est_a = this->m_amplitudeFilter.filter(raw_a, dt_sec);
-            // Scale to range [-1; 1]
-            float est_red_u = red / est_a - 1;
-            float est_green_u = green / est_a - 1;
-            float est_blue_u = blue / est_a - 1;
+            awaRad = awaComputer.computeAwa(red, green, blue, dt_sec);
+            float awaDeg = RAD_2_DEG(awaRad);
 
-            float angle;
-            if (est_green_u < 0 && est_blue_u >= 0)
-                angle = std::acos(-est_red_u);
-            else if(est_blue_u < 0 && est_red_u >= 0)
-                angle = std::asin(est_green_u) + 7.f * (float)M_PI / 6.f;
-            else
-                angle = std::asin(est_blue_u) + 11.f * (float)M_PI / 6.f;
-
-            auto raw_awa_rad = (float)fmod(angle, M_TWOPI);
-            awaRad = this->m_awaFilter.filterAngle(raw_awa_rad, dt_sec);
-            ESP_LOGD(TAG, "AWA,dt_sec,%.3f,raw_a,%.1f,est_a,%.1f,r,%.2f,g,%.2f,b,%.2f,raw_awa,%.1f,est_awa,%.1f",
-                     dt_sec, raw_a, est_a, est_red_u, est_green_u, est_blue_u, RAD_2_DEG(raw_awa_rad), RAD_2_DEG(awaRad));
+            ESP_LOGI(TAG, "AWA,adc_red,%d,adc_green,%d,adc_blue,%d,awa,%.1f", adc_data[0], adc_data[1], adc_data[2], awaDeg);
             return true;
         }
         else{
-            ESP_LOGE(TAG, "AWA,dt_sec,,raw_a,%.1f,est_a,,r,,g,,b,,raw_awa,,est_awa,", raw_a);
+            ESP_LOGI(TAG, "AWA,adc_red,%d,adc_green,%d,adc_blue,%d,awa,", adc_data[0], adc_data[1], adc_data[2]);
             return false; // Apparently sensor is not connected
         }
     }
